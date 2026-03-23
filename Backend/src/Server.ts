@@ -17,7 +17,7 @@ const app = express();
 app.use(express.json());
 dotenv.config()
 
-mongoose.connect('')
+mongoose.connect("mongodb+srv://lovewadhwa03_db_user:password12345@todoapp.zhg1uey.mongodb.net/collab-code-editor")
 
 
 
@@ -135,8 +135,8 @@ app.post('/api/v1/create-room', Auth, async (req, res) => {
                 message: 'Please Signup First !!!'
             })
         }
-        
-        
+
+
         const ownerId = curruser._id
         const roomId = nanoid(5)
 
@@ -157,14 +157,45 @@ app.post('/api/v1/create-room', Auth, async (req, res) => {
     }
     catch (e) {
         res.status(500).json({
-            message:'Internal server Eror'
+            message: 'Internal server Eror'
         })
-        console.log('Error encountered as',e)
+        console.log('Error encountered as', e)
     }
 
 })
 
-app.get('/api/v1/join-room-:roomid', (req, res) => {
+app.get('/api/v1/join-room/:roomId', Auth, async (req, res) => {
+    try {
+        const { roomId } = req.params
+        // @ts-ignore
+        const currroom = await Roommodel.findOne({
+            roomId: roomId
+        })
+
+        if (!currroom) {
+            return res.status(400).json({
+                message: 'Room Id does not exist'
+            })
+        }
+
+        const content = currroom.content
+
+        // i can pass the name of the user directly, because i have ref in the schema, but for now i am just extracting the id of it.
+        const ownerId = currroom.ownerId
+
+        res.status(200).json({
+            message: 'Successfully joined the room !!',
+            content: content,
+            ownerId: ownerId
+
+        })
+    }
+    catch (e) {
+        console.log('Error encountered as', e)
+        return res.status(500).json({
+            message: 'Internal Server Error'
+        })
+    }
 
 
 
@@ -172,9 +203,54 @@ app.get('/api/v1/join-room-:roomid', (req, res) => {
 
 })
 
+app.listen(3000, () => {
+    console.log('Server is listening on the port 3000')
+})
+
 // Websocket Server
 const wss = new WebSocketServer({ port: 8080 });
+let rooms = new Map()
 
 wss.on('connection', (socket) => {
+    console.log('Websocket server connected succesfully !!!')
+    try {
+        socket.on('message', (data) => {
+            const parseddata = JSON.parse(data.toString())
 
+            if (parseddata.type === 'join') {
+                console.log('The request to join the room has been received')
+                const roomId = parseddata.payload.roomId;
+
+                if (!rooms.has(roomId)) {
+                    rooms.set(roomId, [socket])
+                }
+                else {
+                    // roomId already exists in the map, we have to join the room.
+                    rooms.get(roomId).push(socket);
+                }
+
+                socket.send(parseddata.toString())
+            }
+            else if (parseddata.type === 'code') {
+                // parseddata === 'code'
+                const roomId = parseddata.payload.roomId;
+
+                if (rooms.has(roomId)) {
+                    // @ts-ignore
+                    rooms.get(roomId).forEach(s => {
+                        if (s != socket) {
+                            s.send(parseddata.toString())
+                        }
+                    });
+                }
+                else {
+                    socket.send('The room does not exists !!')
+                }
+            }
+
+        })
+    }
+    catch(e){
+        console.log('Error encountered in websocket server as',e);
+    }
 })

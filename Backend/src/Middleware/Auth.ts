@@ -1,4 +1,5 @@
 import type { Request,Response,NextFunction } from "express";
+import jwt from 'jsonwebtoken'
 
 function Auth(req:Request,res:Response,next:NextFunction){
     const token = req.headers.authorization
@@ -9,8 +10,8 @@ function Auth(req:Request,res:Response,next:NextFunction){
     }
     else{
         // @ts-ignore
-        const email = jwt.verify(token,process.env.JWT_SECRET_KEY)
-        res.locals.email = email
+        const data = jwt.verify(token,process.env.JWT_SECRET_KEY)
+        res.locals.email = data.email
     }
     next()
 }

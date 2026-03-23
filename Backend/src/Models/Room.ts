@@ -1,6 +1,4 @@
 import mongoose, { model, Schema } from "mongoose";
-import { nanoid } from "nanoid";
-
 
 const Roomschema = new Schema({
    roomname:{type:String,required:true},
