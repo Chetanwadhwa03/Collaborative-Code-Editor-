@@ -11,6 +11,7 @@ import { nanoid } from 'nanoid';
 import Usermodel from './Models/User.js'
 import Roommodel from './Models/Room.js';
 import Auth from './Middleware/Auth.js';
+import { parse } from 'node:path';
 
 const app = express();
 
@@ -218,7 +219,6 @@ wss.on('connection', (socket) => {
             const parseddata = JSON.parse(data.toString())
 
             if (parseddata.type === 'join') {
-                console.log('The request to join the room has been received')
                 const roomId = parseddata.payload.roomId;
 
                 if (!rooms.has(roomId)) {
@@ -229,9 +229,18 @@ wss.on('connection', (socket) => {
                     rooms.get(roomId).push(socket);
                 }
 
-                socket.send(parseddata.toString())
+                if (rooms.has(roomId)) {
+                    // @ts-ignore
+                    rooms.get(roomId).forEach(s => {
+                        if (s != socket) {
+                            s.send(JSON.stringify(parseddata))
+                        }
+                    });
+                }
+                
             }
             else if (parseddata.type === 'code') {
+                console.log('processing the code!!')
                 // parseddata === 'code'
                 const roomId = parseddata.payload.roomId;
 
@@ -239,7 +248,7 @@ wss.on('connection', (socket) => {
                     // @ts-ignore
                     rooms.get(roomId).forEach(s => {
                         if (s != socket) {
-                            s.send(parseddata.toString())
+                            s.send(JSON.stringify(parseddata))
                         }
                     });
                 }
