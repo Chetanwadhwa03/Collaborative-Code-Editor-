@@ -124,7 +124,7 @@ app.post('/api/v1/signin', async (req, res) => {
 
 app.post('/api/v1/create-room', Auth, async (req, res) => {
     try {
-        const { roomname, content } = req.body
+        const { roomname } = req.body
         const email = res.locals.email
 
         const curruser = await Usermodel.findOne({
