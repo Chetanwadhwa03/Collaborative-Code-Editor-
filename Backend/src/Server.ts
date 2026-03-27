@@ -6,16 +6,24 @@ import bcrypt from 'bcrypt'
 import { z } from 'zod'
 import jwt from 'jsonwebtoken'
 import { nanoid } from 'nanoid';
+import cors from 'cors'
+
 
 
 import Usermodel from './Models/User.js'
 import Roommodel from './Models/Room.js';
 import Auth from './Middleware/Auth.js';
-import { parse } from 'node:path';
+
 
 const app = express();
 
 app.use(express.json());
+
+const corsoptions = {
+    origin:"http://localhost:5173"
+}
+
+app.use(cors(corsoptions))
 dotenv.config()
 
 mongoose.connect("mongodb+srv://lovewadhwa03_db_user:password12345@todoapp.zhg1uey.mongodb.net/collab-code-editor")
@@ -140,6 +148,17 @@ app.post('/api/v1/create-room', Auth, async (req, res) => {
 
         const ownerId = curruser._id
         const roomId = nanoid(5)
+    
+        const roomava = await Roommodel.findOne({
+            roomname:roomname,
+            ownerId:ownerId
+        })
+
+        if(roomava){
+            return res.status(400).json({
+                message:'Room already exists'
+            })
+        }
 
         await Roommodel.create({
             roomname: roomname,
@@ -157,6 +176,15 @@ app.post('/api/v1/create-room', Auth, async (req, res) => {
 
     }
     catch (e) {
+        const error = e as any
+
+        if(error.code === 11000){
+            console.log('Duplicate key error')
+            return res.status(400).json({
+                message:'Room already exists'
+            })
+        }
+        
         res.status(500).json({
             message: 'Internal server Eror'
         })
@@ -168,6 +196,7 @@ app.post('/api/v1/create-room', Auth, async (req, res) => {
 app.get('/api/v1/join-room/:roomId', Auth, async (req, res) => {
     try {
         const { roomId } = req.params
+        console.log('RoomId: ',roomId)
         // @ts-ignore
         const currroom = await Roommodel.findOne({
             roomId: roomId
@@ -240,7 +269,6 @@ wss.on('connection', (socket) => {
                 
             }
             else if (parseddata.type === 'code') {
-                console.log('processing the code!!')
                 // parseddata === 'code'
                 const roomId = parseddata.payload.roomId;
 

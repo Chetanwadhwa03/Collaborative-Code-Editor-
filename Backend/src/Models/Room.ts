@@ -8,5 +8,8 @@ const Roomschema = new Schema({
    
 })
 
+// Compound index validation. that the combination of these 2 values should be unique.
+Roomschema.index({roomname:1,ownerId:1},{unique:true});
+
 const Roommodel = model('rooms',Roomschema);
 export default Roommodel;
