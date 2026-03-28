@@ -41,8 +41,11 @@ type zodtype = z.infer<typeof zodschema>
 
 app.post('/api/v1/signup', async (req, res) => {
     try {
+        console.log('In the signup API')
         const { username, email, password }: zodtype = req.body
+        
         if (!username || !email || !password) {
+            console.log('Faaltu ka error')
             return res.status(400).json({
                 message: "Please provide all the credentials"
             })
@@ -62,7 +65,7 @@ app.post('/api/v1/signup', async (req, res) => {
             res.status(200).json({
                 message: 'Signup Successful !!'
             })
-            console.log('User has signed up 1!! ')
+            console.log('User has signed up !! ')
         }
         else {
             res.status(411).json({
@@ -72,10 +75,19 @@ app.post('/api/v1/signup', async (req, res) => {
         }
     }
     catch (e) {
-        res.status(500).json({
-            message: 'Internal Server Error'
-        })
-        console.log('Error encountered as', e);
+        // @ts-ignore
+        if(e.code === 11000){
+            return res.status(400).json({
+                message:'User already Exists'
+            })
+        }
+        else{
+            console.log('Error encountered as', e);
+            return res.status(500).json({
+                message:'Internal Server Error'
+            })
+        }
+
     }
 })
 
