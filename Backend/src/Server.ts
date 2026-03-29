@@ -7,6 +7,7 @@ import { z } from 'zod'
 import jwt from 'jsonwebtoken'
 import { nanoid } from 'nanoid';
 import cors from 'cors'
+import axios from 'axios'
 
 
 
@@ -20,7 +21,7 @@ const app = express();
 app.use(express.json());
 
 const corsoptions = {
-    origin:"http://localhost:5173"
+    origin: "http://localhost:5173"
 }
 
 app.use(cors(corsoptions))
@@ -43,7 +44,7 @@ app.post('/api/v1/signup', async (req, res) => {
     try {
         console.log('In the signup API')
         const { username, email, password }: zodtype = req.body
-        
+
         if (!username || !email || !password) {
             console.log('Faaltu ka error')
             return res.status(400).json({
@@ -76,15 +77,15 @@ app.post('/api/v1/signup', async (req, res) => {
     }
     catch (e) {
         // @ts-ignore
-        if(e.code === 11000){
+        if (e.code === 11000) {
             return res.status(400).json({
-                message:'User already Exists'
+                message: 'User already Exists'
             })
         }
-        else{
+        else {
             console.log('Error encountered as', e);
             return res.status(500).json({
-                message:'Internal Server Error'
+                message: 'Internal Server Error'
             })
         }
 
@@ -160,15 +161,15 @@ app.post('/api/v1/create-room', Auth, async (req, res) => {
 
         const ownerId = curruser._id
         const roomId = nanoid(5)
-    
+
         const roomava = await Roommodel.findOne({
-            roomname:roomname,
-            ownerId:ownerId
+            roomname: roomname,
+            ownerId: ownerId
         })
 
-        if(roomava){
+        if (roomava) {
             return res.status(400).json({
-                message:'Room already exists'
+                message: 'Room already exists'
             })
         }
 
@@ -190,13 +191,13 @@ app.post('/api/v1/create-room', Auth, async (req, res) => {
     catch (e) {
         const error = e as any
 
-        if(error.code === 11000){
+        if (error.code === 11000) {
             console.log('Duplicate key error')
             return res.status(400).json({
-                message:'Room already exists'
+                message: 'Room already exists'
             })
         }
-        
+
         res.status(500).json({
             message: 'Internal server Eror'
         })
@@ -208,7 +209,7 @@ app.post('/api/v1/create-room', Auth, async (req, res) => {
 app.get('/api/v1/join-room/:roomId', Auth, async (req, res) => {
     try {
         const { roomId } = req.params
-        console.log('RoomId: ',roomId)
+        console.log('RoomId: ', roomId)
         // @ts-ignore
         const currroom = await Roommodel.findOne({
             roomId: roomId
@@ -245,6 +246,52 @@ app.get('/api/v1/join-room/:roomId', Auth, async (req, res) => {
 
 })
 
+app.post('/api/v1/run-code', Auth, async (req, res) => {
+    const { content, language, versionindex } = req.body
+
+    if (!content || content.trim() === "") {
+        return res.status(400).json({ message: "Write some code first !" });
+    }
+
+    try {
+        const response = await axios.post('https://api.jdoodle.com/v1/execute', {
+            "clientId": process.env.Client_ID?.trim(),
+            "clientSecret": process.env.Client_Secret?.trim(),
+            "script": content,
+            "language": language,
+            "versionIndex": versionindex
+        },
+        {
+            "headers": {
+                "Content-Type": 'application/json'
+            }
+        })
+
+        const output = response.data.output
+
+        if (output === "JDoodle - Timeout. If your program reads input, please enter the inputs in the STDIN box above or try to enable the 'Interactive' mode option above. Please check your program does not contain an infinite loop. Contact JDoodle support at hello@jdoodle.com for more information.") {
+            return res.status(400).json({
+                message: 'TIME LIMIT EXCEEDED, please check your code.'
+            })
+        }
+
+        res.status(200).json({
+            message: 'Code Executed successfully',
+            output: output
+        })
+    }
+    catch (e) {
+        // @ts-ignore
+        const error = e.response ? e.response.data : e.message;
+        res.status(400).json({
+            message: 'Code Execution failed.',
+            error: error
+        })
+    }
+})
+
+
+
 app.listen(3000, () => {
     console.log('Server is listening on the port 3000')
 })
@@ -278,7 +325,7 @@ wss.on('connection', (socket) => {
                         }
                     });
                 }
-                
+
             }
             else if (parseddata.type === 'code') {
                 // parseddata === 'code'
@@ -299,7 +346,7 @@ wss.on('connection', (socket) => {
 
         })
     }
-    catch(e){
-        console.log('Error encountered in websocket server as',e);
+    catch (e) {
+        console.log('Error encountered in websocket server as', e);
     }
 })

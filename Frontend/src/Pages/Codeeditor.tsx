@@ -1,5 +1,6 @@
 import { Editor } from "@monaco-editor/react"
 import { useEffect, useState } from "react"
+import axios from 'axios'
 
 
 const Codeeditor = () => {
@@ -7,6 +8,7 @@ const Codeeditor = () => {
   // @ts-ignore
   const [uname, setuname] = useState<string>()
   const [content, setcurrcontent] = useState<string>("//Write your js code here !!!")
+  const [currmonacovalue , setcurrmonacovalue ] = useState<string>("")
 
   useEffect(() => {
     const ws = new WebSocket('ws://localhost:8080')
@@ -34,7 +36,7 @@ const Codeeditor = () => {
 
       if (parseddata.type === 'join') {
         const curruser = parseddata.payload.username
-        alert(`${curruser} has joined the room`)
+        // alert(`${curruser} has joined the room`)
         setuname(curruser)
       }
       // important 
@@ -55,6 +57,9 @@ const Codeeditor = () => {
 
   // @ts-ignore
   const handlemytype = (value: string | undefined, event) => {
+    if(value){
+      setcurrmonacovalue(value)
+    }
     const data = {
       type: 'code',
       payload: {
@@ -65,15 +70,47 @@ const Codeeditor = () => {
     websocket?.send(JSON.stringify(data))
   }
 
+  async function handlerunbutton(){
+    try{
+      const token = localStorage.getItem('authorization')
+      
+      const response = await axios.post('http://localhost:3000/api/v1/run-code',{
+        // for now i have hardcoded the language and the versionindex.
+        content:currmonacovalue,
+        language:"nodejs",
+        versionindex:"4"
+      },
+      {
+        "headers":{
+          "authorization":token
+        }
+      })
+
+      const message = response.data.message
+      const output= response.data.output
+      console.log('output is: ', output);
+
+    }
+    catch(e){
+      // @ts-ignore
+      const message = e.response ? e.response.data : e.message;
+      // @ts-ignore
+      const error = e.response ? e.response.data : e.error;
+      
+      console.log('Error encounterd as',error);
+    }
+  }
+
+
 
   return (
     <div className="bg-black h-screen relative" >
       <div className="bg-amber-300 absolute left-[45vw] p-2">
         Dynamic Island
       </div>
-      <div className="absolute top-[10vh] w-screen h-[80vh]">
-
-        <Editor height={"80vh"}
+      <div className="absolute top-[10vh] w-screen h-[80vh] flex flex-col">
+        <div className="bg-gray-200 justify-center w-[7vw] rounded-2xl p-2 text-center ml-[45vw] mb-2 cursor-pointer hover:bg-gray-400" onClick={handlerunbutton}>Run Code</div>
+        <Editor height={"77vh"}
           theme="vs-dark"
           defaultLanguage="javascript"
           value={content}
@@ -83,7 +120,7 @@ const Codeeditor = () => {
 
 
       </div>
-      <div className="bg-red-400 absolute left-[45vw] bottom-[2vh] p-2">
+      <div className="bg-red-400 absolute left-[45vw] bottom-[1vh] p-2">
         Dock
       </div>
 

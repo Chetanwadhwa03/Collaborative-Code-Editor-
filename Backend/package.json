@@ -28,5 +28,9 @@
     "typescript": "^5.9.3",
     "ws": "^8.20.0",
     "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/axios": "^0.9.36",
+    "axios": "^1.14.0"
   }
 }
