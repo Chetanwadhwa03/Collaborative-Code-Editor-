@@ -1,5 +1,5 @@
 import { Editor } from "@monaco-editor/react"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import axios from 'axios'
 
 
@@ -8,7 +8,8 @@ const Codeeditor = () => {
   // @ts-ignore
   const [uname, setuname] = useState<string>()
   const [content, setcurrcontent] = useState<string>("//Write your js code here !!!")
-  const [currmonacovalue , setcurrmonacovalue ] = useState<string>("")
+  const [currmonacovalue, setcurrmonacovalue] = useState<string>("")
+  const [cexecutedvalue, setcexecutedvalue] = useState<string>()
 
   useEffect(() => {
     const ws = new WebSocket('ws://localhost:8080')
@@ -32,7 +33,6 @@ const Codeeditor = () => {
     ws.onmessage = (data) => {
       // @ts-ignore
       const parseddata = JSON.parse(data.data)
-      console.log('Message received !!!')
 
       if (parseddata.type === 'join') {
         const curruser = parseddata.payload.username
@@ -41,23 +41,55 @@ const Codeeditor = () => {
       }
       // important 
       else if (parseddata.type === 'code') {
-        console.log('The received message has a type code.')
         setcurrcontent(parseddata.payload.content)
       }
     }
-    
+
     // return ws.onclose()
 
   }, [])
 
 
+  async function storeinDB(value: String) {
+    // we have to call the backend to give the content present on the screen to the DB
+
+    const croomId = localStorage.getItem('croomId')
+
+    try {
+      // @ts-ignore
+      const response = await axios.post('http://localhost:3000/api/v1/save-code', {
+        croomId:croomId,
+        content: value
+      })
+      console.log(response.data.message)
+    }
+    catch (e) {
+      console.log('Error encountered as : ',e);
+    }
+  }
 
 
   // When i type the code, i have to send it to the server but i dont have to update the content state.
 
   // @ts-ignore
+  const currclock = useRef(null);
+  // @ts-ignore
   const handlemytype = (value: string | undefined, event) => {
+    if (value !== undefined) {
+      setcurrcontent(value)
+    }
+    
+    if(currclock.current){
+      clearTimeout(currclock.current)
+    }
+
     if(value){
+      // @ts-ignore
+      currclock.current = setTimeout(() => { storeinDB(value) }, 5000);
+    }
+    
+
+    if (value) {
       setcurrmonacovalue(value)
     }
     const data = {
@@ -70,34 +102,37 @@ const Codeeditor = () => {
     websocket?.send(JSON.stringify(data))
   }
 
-  async function handlerunbutton(){
-    try{
+  async function handlerunbutton() {
+    try {
       const token = localStorage.getItem('authorization')
-      
-      const response = await axios.post('http://localhost:3000/api/v1/run-code',{
+
+      const response = await axios.post('http://localhost:3000/api/v1/run-code', {
         // for now i have hardcoded the language and the versionindex.
-        content:currmonacovalue,
-        language:"nodejs",
-        versionindex:"4"
+        content: currmonacovalue,
+        language: "nodejs",
+        versionindex: "4"
       },
-      {
-        "headers":{
-          "authorization":token
-        }
-      })
+        {
+          "headers": {
+            "authorization": token
+          }
+        })
 
       const message = response.data.message
-      const output= response.data.output
+      const output = response.data.output
+      alert(message)
+
+      setcexecutedvalue(output)
       console.log('output is: ', output);
 
     }
-    catch(e){
+    catch (e) {
       // @ts-ignore
       const message = e.response ? e.response.data : e.message;
       // @ts-ignore
       const error = e.response ? e.response.data : e.error;
-      
-      console.log('Error encounterd as',error);
+
+      setcexecutedvalue(error.message)
     }
   }
 
@@ -110,17 +145,23 @@ const Codeeditor = () => {
       </div>
       <div className="absolute top-[10vh] w-screen h-[80vh] flex flex-col">
         <div className="bg-gray-200 justify-center w-[7vw] rounded-2xl p-2 text-center ml-[45vw] mb-2 cursor-pointer hover:bg-gray-400" onClick={handlerunbutton}>Run Code</div>
-        <Editor height={"77vh"}
-          theme="vs-dark"
-          defaultLanguage="javascript"
-          value={content}
-          onChange={handlemytype}>
-        </Editor>
+        <div className="flex">
+          <Editor height={"77vh"}
+            width={"55vw"}
+            theme="vs-dark"
+            defaultLanguage="javascript"
+            value={content}
+            onChange={handlemytype}>
+          </Editor>
+          <div className={`bg-[#0F111A] p-4 h-[77vh] w-[45vw] font-mono text-white whitespace-pre-wrap`}>
+            <span>Output: </span>
+            {cexecutedvalue}
+          </div>
 
-
+        </div>
 
       </div>
-      <div className="bg-red-400 absolute left-[45vw] bottom-[1vh] p-2">
+      <div className="bg-red-400 absolute left-[45vw] bottom-[1vh] p-0.5 mt-2">
         Dock
       </div>
 

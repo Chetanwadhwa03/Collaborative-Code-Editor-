@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { useState } from 'react'
 
 import './App.css'
 import Landingpage from './Pages/Landingpage'
@@ -8,7 +9,7 @@ import Errorpage from './Pages/Errorpage'
 
 
 function App() {
-
+  const [roomId, setroomId] = useState<string>()
 
   return (
     <>
@@ -27,3 +28,4 @@ function App() {
 }
 
 export default App
+ 

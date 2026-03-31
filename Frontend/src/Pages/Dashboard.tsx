@@ -48,7 +48,9 @@ const Dashboard = () => {
   async function handlejoinroom(){
     try{
       const token = localStorage.getItem('authorization')
-      console.log('In the try block')
+      if(roomId){
+        localStorage.setItem('croomId',roomId);
+      }
       const response = await axios.get(`http://localhost:3000/api/v1/join-room/${roomId}`,{
         headers:{
           authorization:token

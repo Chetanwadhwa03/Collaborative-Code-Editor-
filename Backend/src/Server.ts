@@ -9,8 +9,6 @@ import { nanoid } from 'nanoid';
 import cors from 'cors'
 import axios from 'axios'
 
-
-
 import Usermodel from './Models/User.js'
 import Roommodel from './Models/Room.js';
 import Auth from './Middleware/Auth.js';
@@ -206,9 +204,12 @@ app.post('/api/v1/create-room', Auth, async (req, res) => {
 
 })
 
+// @ts-ignore
+let croomId;
 app.get('/api/v1/join-room/:roomId', Auth, async (req, res) => {
     try {
         const { roomId } = req.params
+        
         console.log('RoomId: ', roomId)
         // @ts-ignore
         const currroom = await Roommodel.findOne({
@@ -268,8 +269,9 @@ app.post('/api/v1/run-code', Auth, async (req, res) => {
         })
 
         const output = response.data.output
+        console.log(output);
 
-        if (output === "JDoodle - Timeout. If your program reads input, please enter the inputs in the STDIN box above or try to enable the 'Interactive' mode option above. Please check your program does not contain an infinite loop. Contact JDoodle support at hello@jdoodle.com for more information.") {
+        if (output.includes(" JDoodle - Timeout") || output.includes(" JDoodle - output Limit reached.")) {
             return res.status(400).json({
                 message: 'TIME LIMIT EXCEEDED, please check your code.'
             })
@@ -281,6 +283,8 @@ app.post('/api/v1/run-code', Auth, async (req, res) => {
         })
     }
     catch (e) {
+        // In catch block , it will only come when the network failed or Jdoodle server crashed , if our program is running and Jdoodle is giving us an output that just means that it will come in the try block.
+
         // @ts-ignore
         const error = e.response ? e.response.data : e.message;
         res.status(400).json({
@@ -290,18 +294,41 @@ app.post('/api/v1/run-code', Auth, async (req, res) => {
     }
 })
 
+app.post('/api/v1/save-code', async (req,res) => {
+    const {content,croomId} = req.body
+
+    const croom = await Roommodel.findOne({
+        // @ts-ignore
+        roomId:croomId
+    })
+
+
+    if(!croom){
+       return res.status(400).json({
+        message:'Room Crashed !!!'
+       })
+    }
+
+    
+    croom.content = content;
+    await croom.save();
+    
+    return res.status(200).json({
+        message:'Content Updated in DB'
+    })
+})
 
 
 app.listen(3000, () => {
     console.log('Server is listening on the port 3000')
 })
 
+
 // Websocket Server
 const wss = new WebSocketServer({ port: 8080 });
 let rooms = new Map()
 
 wss.on('connection', (socket) => {
-    console.log('Websocket server connected succesfully !!!')
     try {
         socket.on('message', (data) => {
             const parseddata = JSON.parse(data.toString())
