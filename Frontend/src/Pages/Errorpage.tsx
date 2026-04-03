@@ -2,7 +2,7 @@
 const Errorpage = () => {
   return (
     <div>
-      
+      Something Went Wrong!!
     </div>
   )
 }

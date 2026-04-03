@@ -144,6 +144,12 @@ app.post('/api/v1/signin', async (req, res) => {
 app.post('/api/v1/create-room', Auth, async (req, res) => {
     try {
         const { roomname } = req.body
+        if(!roomname){
+            return res.status(400).json({
+                message:'Please Enter the room name !!!'
+            })
+        }
+
         const email = res.locals.email
 
         const curruser = await Usermodel.findOne({
@@ -204,8 +210,7 @@ app.post('/api/v1/create-room', Auth, async (req, res) => {
 
 })
 
-// @ts-ignore
-let croomId;
+
 app.get('/api/v1/join-room/:roomId', Auth, async (req, res) => {
     try {
         const { roomId } = req.params
@@ -247,6 +252,7 @@ app.get('/api/v1/join-room/:roomId', Auth, async (req, res) => {
 
 })
 
+// For sending request to the J-Doodle Server.
 app.post('/api/v1/run-code', Auth, async (req, res) => {
     const { content, language, versionindex } = req.body
 
@@ -269,7 +275,6 @@ app.post('/api/v1/run-code', Auth, async (req, res) => {
         })
 
         const output = response.data.output
-        console.log(output);
 
         if (output.includes(" JDoodle - Timeout") || output.includes(" JDoodle - output Limit reached.")) {
             return res.status(400).json({
@@ -294,6 +299,7 @@ app.post('/api/v1/run-code', Auth, async (req, res) => {
     }
 })
 
+// For the request coming from the Debounce hook.
 app.post('/api/v1/save-code', async (req,res) => {
     const {content,croomId} = req.body
 
@@ -344,6 +350,8 @@ wss.on('connection', (socket) => {
                     rooms.get(roomId).push(socket);
                 }
 
+                
+                // I am sending data here, just for the reason to show everyone that who has joined the room.
                 if (rooms.has(roomId)) {
                     // @ts-ignore
                     rooms.get(roomId).forEach(s => {

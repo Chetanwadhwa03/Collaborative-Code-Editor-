@@ -9,8 +9,6 @@ import Errorpage from './Pages/Errorpage'
 
 
 function App() {
-  const [roomId, setroomId] = useState<string>()
-
   return (
     <>
       <BrowserRouter>

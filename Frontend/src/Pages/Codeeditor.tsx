@@ -1,6 +1,7 @@
 import { Editor } from "@monaco-editor/react"
 import { useEffect, useRef, useState } from "react"
 import axios from 'axios'
+import { useParams } from "react-router-dom"
 
 
 const Codeeditor = () => {
@@ -8,8 +9,9 @@ const Codeeditor = () => {
   // @ts-ignore
   const [uname, setuname] = useState<string>()
   const [content, setcurrcontent] = useState<string>("//Write your js code here !!!")
-  const [currmonacovalue, setcurrmonacovalue] = useState<string>("")
+  // const [currmonacovalue, setcurrmonacovalue] = useState<string>("")
   const [cexecutedvalue, setcexecutedvalue] = useState<string>()
+  const {roomId} = useParams()
 
   useEffect(() => {
     const ws = new WebSocket('ws://localhost:8080')
@@ -20,8 +22,8 @@ const Codeeditor = () => {
       const temproom = {
         type: 'join',
         payload: {
-          roomId: 'xyz',
-          username: 'chetan'
+          roomId: roomId,
+          username: uname
         }
       }
 
@@ -52,13 +54,11 @@ const Codeeditor = () => {
 
   async function storeinDB(value: String) {
     // we have to call the backend to give the content present on the screen to the DB
-
-    const croomId = localStorage.getItem('croomId')
-
+    
     try {
       // @ts-ignore
       const response = await axios.post('http://localhost:3000/api/v1/save-code', {
-        croomId:croomId,
+        croomId:roomId,
         content: value
       })
       console.log(response.data.message)
@@ -89,13 +89,13 @@ const Codeeditor = () => {
     }
     
 
-    if (value) {
-      setcurrmonacovalue(value)
-    }
+    // if (value) {
+    //   setcurrmonacovalue(value)
+    // }
     const data = {
       type: 'code',
       payload: {
-        roomId: 'xyz',
+        roomId: roomId,
         content: value
       }
     }
@@ -108,7 +108,7 @@ const Codeeditor = () => {
 
       const response = await axios.post('http://localhost:3000/api/v1/run-code', {
         // for now i have hardcoded the language and the versionindex.
-        content: currmonacovalue,
+        content: content,
         language: "nodejs",
         versionindex: "4"
       },

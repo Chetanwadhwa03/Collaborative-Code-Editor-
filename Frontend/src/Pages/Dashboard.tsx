@@ -33,31 +33,27 @@ const Dashboard = () => {
         const obtroomId = response.data.roomId
         joinroomref.current.innerHTML = obtroomId
         setbVisible(true)
-        navigate(`/Codeeditor/:${obtroomId}`)
-
+        navigate(`/Codeeditor/${obtroomId}`)
       }
     }
     catch (e) {
       setbVisible(true)
-
-      // const error = e as any
-      // alert(error.data.message)
+      // @ts-ignore
+      alert(e.response.data.message)
+      
     }
   }
 
   async function handlejoinroom(){
     try{
       const token = localStorage.getItem('authorization')
-      if(roomId){
-        localStorage.setItem('croomId',roomId);
-      }
       const response = await axios.get(`http://localhost:3000/api/v1/join-room/${roomId}`,{
         headers:{
           authorization:token
         }
       })
       
-      navigate(`/Codeeditor/:${roomId}`)
+      navigate(`/Codeeditor/${roomId}`)
       // For now it is alert, but later on we have to use toasts here.
       alert(response.data.message)
     }
@@ -65,8 +61,6 @@ const Dashboard = () => {
       // for now i have hardcoded the message, otherwise we have to pick it up from the server.
       alert("RoomId does not exist")
     }
-
-
   }
 
 
@@ -85,7 +79,6 @@ const Dashboard = () => {
             <button className={`border-2 border-white  p-2 cursor-pointer ${(!bVisible) ? 'hidden' : 'block hover:bg-gray-400'}`} onClick={handlecreateroom}>Create Room</button>
           </span>
           <div ref={joinroomref} className="border-2 bg-amber-50 mt-3 p-3 rounded-xl">
-
           </div>
         </div>
         <div className="bg-pink-200 p-4 rounded-xl border border-white  h-[30vh] w-[25vw]">
