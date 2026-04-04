@@ -215,7 +215,6 @@ app.get('/api/v1/join-room/:roomId', Auth, async (req, res) => {
     try {
         const { roomId } = req.params
         
-        console.log('RoomId: ', roomId)
         // @ts-ignore
         const currroom = await Roommodel.findOne({
             roomId: roomId
@@ -245,11 +244,6 @@ app.get('/api/v1/join-room/:roomId', Auth, async (req, res) => {
             message: 'Internal Server Error'
         })
     }
-
-
-
-
-
 })
 
 // For sending request to the J-Doodle Server.
@@ -323,6 +317,9 @@ app.post('/api/v1/save-code', async (req,res) => {
         message:'Content Updated in DB'
     })
 })
+
+// To get the content present in that particular room
+
 
 
 app.listen(3000, () => {

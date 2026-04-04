@@ -1,11 +1,10 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import { useState } from 'react'
-
 import './App.css'
 import Landingpage from './Pages/Landingpage'
 import Codeeditor from './Pages/Codeeditor'
 import Dashboard from './Pages/Dashboard'
 import Errorpage from './Pages/Errorpage'
+import ProtectedRoute from './ProtectedRoute/ProtectedRoute'
 
 
 function App() {
@@ -13,10 +12,10 @@ function App() {
     <>
       <BrowserRouter>
         <Routes>
-          <Route path='/' Component={Landingpage}></Route>
-          <Route path='/Codeeditor/:roomId' Component={Codeeditor}></Route>
-          <Route path='/Dashboard' Component={Dashboard}></Route>
-          <Route path='*' Component={Errorpage}></Route>
+          <Route path='/' element={<Landingpage />}></Route>
+          <Route path='/Codeeditor/:roomId' element={<ProtectedRoute><Codeeditor /></ProtectedRoute>}></Route>
+          <Route path='/Dashboard' element={<ProtectedRoute><Dashboard /></ProtectedRoute>}></Route>
+          <Route path='*' element={<Errorpage />}></Route>
         </Routes>
       </BrowserRouter>
 
@@ -26,4 +25,3 @@ function App() {
 }
 
 export default App
- 
