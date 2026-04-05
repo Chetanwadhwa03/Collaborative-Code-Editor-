@@ -1,501 +1,311 @@
-  import axios from "axios"
-  import { useState, useEffect, useRef } from "react"
-  import { useNavigate } from "react-router-dom"
+import axios from "axios"
+import { useState, useEffect, useRef } from "react"
+import { useNavigate } from "react-router-dom"
+import { toast } from 'react-toastify'
 
-  // ─── Terminal animation data ───────────────────────────────────────────────────
-  const BOOT_SEQUENCE = [
-    { text: "CODELINK RUNTIME v3.1.0", type: "header", delay: 0 },
-    { text: "──────────────────────────────────────", type: "divider", delay: 120 },
-    { text: "► Mounting distributed file system...", type: "cmd", delay: 350 },
-    { text: "  ✓ ext4 @ /workspace [mounted]", type: "ok", delay: 700 },
-    { text: "► Resolving peer topology...", type: "cmd", delay: 1050 },
-    { text: "  ✓ 6 nodes discovered (RTT avg 12ms)", type: "ok", delay: 1400 },
-    { text: "► Spawning WebSocket relay...", type: "cmd", delay: 1750 },
-    { text: "  ✓ wss://relay.codelink.io:443 [OPEN]", type: "ok", delay: 2100 },
-    { text: "► Compiling hot-reload daemon...", type: "cmd", delay: 2450 },
-    { text: "  ✓ esbuild 0.21.3 — 847μs", type: "ok", delay: 2800 },
-    { text: "► Establishing E2E encryption...", type: "cmd", delay: 3150 },
-    { text: "  ✓ ChaCha20-Poly1305 handshake complete", type: "ok", delay: 3500 },
-    { text: "──────────────────────────────────────", type: "divider", delay: 3750 },
-    { text: "  SESSION READY · 6 collaborators live", type: "ready", delay: 3950 },
-  ]
+// ─── Terminal animation data ───────────────────────────────────────────────────
+const BOOT_SEQUENCE = [
+  { text: "CODELINK RUNTIME v3.1.0", type: "header", delay: 0 },
+  { text: "──────────────────────────────────────", type: "divider", delay: 120 },
+  { text: "► Mounting distributed file system...", type: "cmd", delay: 350 },
+  { text: "  ✓ ext4 @ /workspace [mounted]", type: "ok", delay: 700 },
+  { text: "► Resolving peer topology...", type: "cmd", delay: 1050 },
+  { text: "  ✓ 6 nodes discovered (RTT avg 12ms)", type: "ok", delay: 1400 },
+  { text: "► Spawning WebSocket relay...", type: "cmd", delay: 1750 },
+  { text: "  ✓ wss://relay.codelink.io:443 [OPEN]", type: "ok", delay: 2100 },
+  { text: "► Compiling hot-reload daemon...", type: "cmd", delay: 2450 },
+  { text: "  ✓ esbuild 0.21.3 — 847μs", type: "ok", delay: 2800 },
+  { text: "► Establishing E2E encryption...", type: "cmd", delay: 3150 },
+  { text: "  ✓ ChaCha20-Poly1305 handshake complete", type: "ok", delay: 3500 },
+  { text: "──────────────────────────────────────", type: "divider", delay: 3750 },
+  { text: "  SESSION READY · 6 collaborators live", type: "ready", delay: 3950 },
+]
 
-  const CODE_LINES = [
-    { ln: "1",  tokens: [{ t: "keyword", v: "import" }, { t: "plain", v: " { " }, { t: "ident", v: "Runtime" }, { t: "plain", v: ", " }, { t: "ident", v: "Peer" }, { t: "plain", v: " } " }, { t: "keyword", v: "from" }, { t: "string", v: " '@codelink/core'" }] },
-    { ln: "2",  tokens: [{ t: "keyword", v: "import" }, { t: "plain", v: " { " }, { t: "ident", v: "sync" }, { t: "plain", v: " } " }, { t: "keyword", v: "from" }, { t: "string", v: " '@codelink/crdt'" }] },
-    { ln: "3",  tokens: [{ t: "plain", v: "" }] },
-    { ln: "4",  tokens: [{ t: "comment", v: "// Initialize collaborative session" }] },
-    { ln: "5",  tokens: [{ t: "keyword", v: "const" }, { t: "plain", v: " " }, { t: "ident", v: "session" }, { t: "plain", v: " = " }, { t: "keyword", v: "await" }, { t: "plain", v: " " }, { t: "ident", v: "Runtime" }, { t: "plain", v: "." }, { t: "fn", v: "init" }, { t: "plain", v: "({" }] },
-    { ln: "6",  tokens: [{ t: "plain", v: "  " }, { t: "prop", v: "engine" }, { t: "plain", v: ": " }, { t: "string", v: "'v8-turbo'" }, { t: "plain", v: "," }] },
-    { ln: "7",  tokens: [{ t: "plain", v: "  " }, { t: "prop", v: "peers" }, { t: "plain", v: ": " }, { t: "number", v: "6" }, { t: "plain", v: "," }] },
-    { ln: "8",  tokens: [{ t: "plain", v: "  " }, { t: "prop", v: "encrypted" }, { t: "plain", v: ": " }, { t: "bool", v: "true" }, { t: "plain", v: "," }] },
-    { ln: "9",  tokens: [{ t: "plain", v: "})" }] },
-    { ln: "10", tokens: [{ t: "plain", v: "" }] },
-    { ln: "11", tokens: [{ t: "ident", v: "session" }, { t: "plain", v: "." }, { t: "fn", v: "on" }, { t: "plain", v: "(" }, { t: "string", v: "'delta'" }, { t: "plain", v: ", " }, { t: "ident", v: "sync" }, { t: "plain", v: "." }, { t: "fn", v: "apply" }, { t: "plain", v: ")" }] },
-  ]
+const CODE_LINES = [
+  { ln: "1", tokens: [{ t: "keyword", v: "import" }, { t: "plain", v: " { " }, { t: "ident", v: "Runtime" }, { t: "plain", v: ", " }, { t: "ident", v: "Peer" }, { t: "plain", v: " } " }, { t: "keyword", v: "from" }, { t: "string", v: " '@codelink/core'" }] },
+  { ln: "2", tokens: [{ t: "keyword", v: "import" }, { t: "plain", v: " { " }, { t: "ident", v: "sync" }, { t: "plain", v: " } " }, { t: "keyword", v: "from" }, { t: "string", v: " '@codelink/crdt'" }] },
+  { ln: "3", tokens: [{ t: "plain", v: "" }] },
+  { ln: "4", tokens: [{ t: "comment", v: "// Initialize collaborative session" }] },
+  { ln: "5", tokens: [{ t: "keyword", v: "const" }, { t: "plain", v: " " }, { t: "ident", v: "session" }, { t: "plain", v: " = " }, { t: "keyword", v: "await" }, { t: "plain", v: " " }, { t: "ident", v: "Runtime" }, { t: "plain", v: "." }, { t: "fn", v: "init" }, { t: "plain", v: "({" }] },
+  { ln: "6", tokens: [{ t: "plain", v: "  " }, { t: "prop", v: "engine" }, { t: "plain", v: ": " }, { t: "string", v: "'v8-turbo'" }, { t: "plain", v: "," }] },
+  { ln: "7", tokens: [{ t: "plain", v: "  " }, { t: "prop", v: "peers" }, { t: "plain", v: ": " }, { t: "number", v: "6" }, { t: "plain", v: "," }] },
+  { ln: "8", tokens: [{ t: "plain", v: "  " }, { t: "prop", v: "encrypted" }, { t: "plain", v: ": " }, { t: "bool", v: "true" }, { t: "plain", v: "," }] },
+  { ln: "9", tokens: [{ t: "plain", v: "})" }] },
+  { ln: "10", tokens: [{ t: "plain", v: "" }] },
+  { ln: "11", tokens: [{ t: "ident", v: "session" }, { t: "plain", v: "." }, { t: "fn", v: "on" }, { t: "plain", v: "(" }, { t: "string", v: "'delta'" }, { t: "plain", v: ", " }, { t: "ident", v: "sync" }, { t: "plain", v: "." }, { t: "fn", v: "apply" }, { t: "plain", v: ")" }] },
+]
 
-  const TOKEN_COLORS: Record<string, string> = {
-    keyword: "#c792ea",
-    ident:   "#82aaff",
-    string:  "#c3e88d",
-    fn:      "#82aaff",
-    prop:    "#f78c6c",
-    number:  "#f78c6c",
-    bool:    "#ff5874",
-    comment: "#546e7a",
-    plain:   "#a6accd",
+const TOKEN_COLORS: Record<string, string> = {
+  keyword: "#c792ea", ident: "#82aaff", string: "#c3e88d",
+  fn: "#82aaff", prop: "#f78c6c", number: "#f78c6c",
+  bool: "#ff5874", comment: "#546e7a", plain: "#a6accd",
+}
+
+function CodeToken({ t, v }: { t: string; v: string }) {
+  return <span style={{ color: TOKEN_COLORS[t] ?? TOKEN_COLORS.plain }}>{v}</span>
+}
+
+function TerminalOutput() {
+  const [visible, setVisible] = useState(0)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (visible >= BOOT_SEQUENCE.length) return
+    const delay = visible === 0 ? 0 : BOOT_SEQUENCE[visible].delay - BOOT_SEQUENCE[visible - 1].delay
+    const timer = setTimeout(() => setVisible(v => v + 1), delay)
+    return () => clearTimeout(timer)
+  }, [visible])
+
+  useEffect(() => {
+    const el = scrollContainerRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }, [visible])
+
+  const lineColor = (type: string) => {
+    if (type === "ok") return "#4ade80"
+    if (type === "ready") return "#00f0ff"
+    if (type === "header") return "#e2e8f0"
+    if (type === "divider") return "#1e293b"
+    return "#64748b"
   }
 
-  // ─── Token renderer ────────────────────────────────────────────────────────────
-  function CodeToken({ t, v }: { t: string; v: string }) {
-    return <span style={{ color: TOKEN_COLORS[t] ?? TOKEN_COLORS.plain }}>{v}</span>
-  }
+  return (
+    <div
+      ref={scrollContainerRef}
+      className="h-[160px] overflow-y-auto flex flex-col gap-[1px] scrollbar-hide"
+      style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+    >
+      {BOOT_SEQUENCE.slice(0, visible).map((line, i) => (
+        <div
+          key={i}
+          className="font-mono text-[11.5px] leading-[1.8] tracking-[0.01em] animate-termLine shrink-0"
+          style={{
+            color: lineColor(line.type),
+            fontWeight: line.type === "header" || line.type === "ready" ? 600 : 400,
+          }}
+        >
+          {line.text}
+        </div>
+      ))}
+      {visible >= BOOT_SEQUENCE.length && (
+        <div className="flex items-center gap-[6px] mt-[6px] shrink-0">
+          <span className="text-[#4ade80] font-mono text-[12px]">$</span>
+          <span className="inline-block w-[7px] h-[13px] bg-core-cyan rounded-[1px] align-middle animate-blink" />
+        </div>
+      )}
+    </div>
+  )
+}
 
-  // ─── Animated terminal output ──────────────────────────────────────────────────
-  function TerminalOutput() {
-    const [visible, setVisible] = useState(0)
-    const bottomRef = useRef<HTMLDivElement>(null)
-
-    useEffect(() => {
-      if (visible >= BOOT_SEQUENCE.length) return
-      const timer = setTimeout(
-        () => setVisible(v => v + 1),
-        visible === 0 ? 0 : BOOT_SEQUENCE[visible].delay - BOOT_SEQUENCE[visible - 1].delay
-      )
-      return () => clearTimeout(timer)
-    }, [visible])
-
-    useEffect(() => {
-      bottomRef.current?.scrollIntoView({ behavior: "smooth" })
-    }, [visible])
-
-    const lineColor = (type: string) => {
-      if (type === "ok")      return "#4ade80"
-      if (type === "ready")   return "#00f0ff"
-      if (type === "header")  return "#e2e8f0"
-      if (type === "divider") return "#1e293b"
-      return "#64748b"
-    }
-
-    return (
-      <div style={{ display: "flex", flexDirection: "column", gap: "1px" }}>
-        {BOOT_SEQUENCE.slice(0, visible).map((line, i) => (
-          <div
-            key={i}
-            style={{
-              fontFamily: "'JetBrains Mono', monospace",
-              fontSize: "11.5px",
-              lineHeight: "1.8",
-              color: lineColor(line.type),
-              fontWeight: line.type === "header" || line.type === "ready" ? 600 : 400,
-              letterSpacing: "0.01em",
-              animation: "termLine 0.2s ease forwards",
-            }}
-          >
-            {line.text}
-          </div>
-        ))}
-        {visible >= BOOT_SEQUENCE.length && (
-          <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "6px" }}>
-            <span style={{ color: "#4ade80", fontFamily: "'JetBrains Mono', monospace", fontSize: "12px" }}>$</span>
-            <span style={{
-              display: "inline-block", width: "7px", height: "13px",
-              background: "#00f0ff", borderRadius: "1px", verticalAlign: "middle",
-              animation: "blink 1s step-end infinite",
-            }} />
-          </div>
-        )}
-        <div ref={bottomRef} />
-      </div>
+function useScrollReveal(threshold = 0.12) {
+  const ref = useRef<HTMLElement>(null)
+  const [revealed, setRevealed] = useState(false)
+  
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      ([entry]) => setRevealed(entry.isIntersecting),
+      { threshold }
     )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [threshold])
+  return { ref, revealed }
+}
+
+const FEATURES = [
+  {
+    title: "Real-Time IDE",
+    description: "Seamless collaborative editing with real-time state syncing. See your team's changes appear live on your screen as they type.",
+    icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" /></svg>,
+    badge: null,
+  },
+  {
+    title: "Live Chat",
+    description: "Instant messaging built right into the development workspace. Communicate without context switching.",
+    icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>,
+    badge: null,
+  },
+  {
+    title: "Voice & Video",
+    description: "High-fidelity WebRTC communication for seamless pair programming and team collaboration.",
+    icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" /></svg>,
+    badge: "COMING SOON",
+  },
+]
+
+const Landingpage = () => {
+  const [isSignup, setisSignup] = useState<boolean>(true)
+  const [showSplash, setShowSplash] = useState(true)
+
+  useEffect(() => {
+    const timer = setTimeout(() => setShowSplash(false), 2200)
+    return () => clearTimeout(timer)
+  }, [])
+
+  const navigate = useNavigate()
+  const pageTopRef = useRef<HTMLDivElement>(null)
+
+  const featuresReveal = useScrollReveal(0.08)
+  const creatorReveal = useScrollReveal(0.08)
+  const footerReveal = useScrollReveal(0)
+
+  const scrollToTop = () => window.scrollTo({ top: 0, behavior: "smooth" })
+
+  // @ts-ignore
+  async function handlesignup(e) {
+    e.preventDefault()
+    const formdata = new FormData(e.currentTarget)
+    const content = Object.fromEntries(formdata)
+    try {
+      const response = await axios.post('http://localhost:3000/api/v1/signup', content)
+      toast.success(response.data.message)
+      setisSignup(false)
+    } catch (e) {
+      // @ts-ignore
+      toast.error(e.response?.data?.message || "Something went wrong!")
+    }
   }
 
-  // ─── Main Component ────────────────────────────────────────────────────────────
-  const Landingpage = () => {
-    const [isSignup, setisSignup] = useState<boolean>(true)
-    const navigate = useNavigate()
-
-    // @ts-ignore
-    async function handlesignup(e) {
-      console.log('In the handlesignup function')
-      e.preventDefault()
-      const formdata = new FormData(e.currentTarget)
-      const content = Object.fromEntries(formdata)
-      try {
-        const response = await axios.post('http://localhost:3000/api/v1/signup', content)
-        alert(response.data.message)
-        setisSignup(false)
-      } catch (e) {
-        // @ts-ignore
-        alert(e.response.data.message)
-      }
+  // @ts-ignore
+  async function handlesignin(e) {
+    e.preventDefault()
+    const formdata = new FormData(e.currentTarget)
+    const content = Object.fromEntries(formdata)
+    try {
+      const response = await axios.post('http://localhost:3000/api/v1/signin', content)
+      localStorage.setItem('authorization', response.data.token)
+      localStorage.setItem('username', response.data.username)
+      toast.success(response.data.message)
+      navigate('/Dashboard')
+    } catch (e) {
+      // @ts-ignore
+      toast.error(e.response?.data?.message || "Something went wrong!")
     }
+  }
 
-    // @ts-ignore
-    async function handlesignin(e) {
-      e.preventDefault()
-      const formdata = new FormData(e.currentTarget)
-      const content = Object.fromEntries(formdata)
-      try {
-        const response = await axios.post('http://localhost:3000/api/v1/signin', content)
-        const ctoken = response.data.token
-        localStorage.setItem('authorization', ctoken)
-        alert(response.data.message)
-        navigate('/Dashboard')
-      } catch (e) {
-        // @ts-ignore
-        alert(e.response.data.message)
-      }
-    }
+  return (
+    <>
+      {/* Toastify overrides — Required for external portal styling */}
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Geist:wght@300;400;500;600;700&display=swap');
+        html { scroll-behavior: smooth; }
+        body { background-color: #09090b }
+        .Toastify__toast-container { font-family: 'JetBrains Mono', monospace !important; font-size: 11.5px !important; letter-spacing: 0.04em !important; }
+        .Toastify__toast { background: #09090b !important; border: 1px solid rgba(0,240,255,0.25) !important; border-radius: 4px !important; color: rgba(255,255,255,0.8) !important; box-shadow: none !important; padding: 10px 14px !important; min-height: 0 !important; }
+        .Toastify__toast--success { border-color: rgba(74,222,128,0.35) !important; }
+        .Toastify__toast--success .Toastify__toast-icon svg { fill: #4ade80 !important; }
+        .Toastify__toast--error   { border-color: rgba(255,80,80,0.35)  !important; }
+        .Toastify__toast--error .Toastify__toast-icon svg   { fill: #ff5f5f !important; }
+        .Toastify__toast-body { padding: 0 !important; margin: 0 !important; gap: 8px !important; }
+        .Toastify__progress-bar--success { background: #4ade80 !important; height: 1px !important; }
+        .Toastify__progress-bar--error   { background: #ff5f5f !important; height: 1px !important; }
+      `}</style>
 
-    return (
-      <>
-        <style>{`
-          @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,700;1,300&family=Geist:wght@300;400;500;600;700;800&display=swap');
-          *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      {/* Splash Screen */}
+      {showSplash && (
+        <div className="fixed inset-0 z-[99999] bg-black flex items-center justify-center animate-splash">
+          <div className="font-mono text-4xl text-white font-bold tracking-wide flex items-center gap-1">
+            <span className="text-core-cyan">{'>'}_</span> Corewire
+            <span className="inline-block w-[14px] h-[32px] bg-core-cyan ml-2 rounded-sm animate-blink" />
+          </div>
+        </div>
+      )}
 
-          :root {
-            --cyan:   #00f0ff;
-            --purple: #a855f7;
-            --green:  #4ade80;
-            --bg:     #09090b;
-            --panel:  #0d0d10;
-            --border: rgba(255,255,255,0.06);
-          }
+      {/* Navbar */}
+      <nav className="fixed top-0 left-0 right-0 z-50 h-[54px] flex items-center justify-between px-5 md:px-9 border-b border-core-border bg-core-bg/85 backdrop-blur-md">
+        <button className="flex items-center font-mono text-sm font-semibold tracking-wide text-white/90 cursor-pointer bg-none border-none p-0 transition-opacity hover:opacity-65" onClick={scrollToTop}>
+          <span className="text-core-cyan">{'>'}_&nbsp;</span>
+          Corewire
+          <span className="inline-block w-[8px] h-[15px] bg-core-cyan ml-[3px] rounded-sm align-middle shadow-[0_0_8px_rgba(0,240,255,0.5)] animate-cursorPulse" />
+        </button>
+        <div className="hidden md:flex items-center gap-7">
+          <button className="font-mono text-[10.5px] text-white/30 tracking-widest cursor-pointer transition-colors hover:text-core-cyan" onClick={scrollToTop}>HOME</button>
+          <a className="font-mono text-[10.5px] text-white/30 tracking-widest cursor-pointer transition-colors hover:text-core-cyan" href="#features">FEATURES</a>
+          <a className="font-mono text-[10.5px] text-white/30 tracking-widest cursor-pointer transition-colors hover:text-core-cyan" href="#creator">ABOUT</a>
+          <a className="font-mono text-[10.5px] text-white/30 tracking-widest cursor-pointer transition-colors hover:text-core-cyan" href="https://github.com/Chetanwadhwa03/Collaborative-Code-Editor-" target="_blank" rel="noreferrer">GITHUB</a>
+        </div>
+      </nav>
 
-          @keyframes blink      { 0%,100%{opacity:1} 50%{opacity:0} }
-          @keyframes termLine   { from{opacity:0;transform:translateX(-4px)} to{opacity:1;transform:none} }
-          @keyframes fadeUp     { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:none} }
-          @keyframes scanDown   { 0%{top:-10%;opacity:0} 10%{opacity:.04} 90%{opacity:.04} 100%{top:110%;opacity:0} }
-          @keyframes gridShimmer{ 0%,100%{opacity:.04} 50%{opacity:.09} }
-          @keyframes cornerPulse{ 0%,100%{opacity:.4} 50%{opacity:1} }
-          @keyframes liveFlash  { 0%,100%{opacity:1} 50%{opacity:.25} }
-          @keyframes formFadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:none} }
+      <div className="font-sans bg-core-bg min-h-screen flex flex-col pt-[54px]" ref={pageTopRef}>
+        
+        {/* Hero Section */}
+        <div className="flex flex-col md:flex-row min-h-[calc(100vh-54px)]">
+          {/* Left Hero */}
+          <div className="w-full md:w-1/2 flex flex-col justify-center items-center py-12 px-6 md:py-12 md:px-14 relative border-b md:border-b-0 md:border-r border-core-border overflow-hidden">
+            <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.06)_1px,transparent_1px)] bg-[size:48px_48px] animate-gridShimmer pointer-events-none" />
+            <div className="absolute rounded-full pointer-events-none w-[500px] h-[500px] bg-[radial-gradient(circle,rgba(0,240,255,0.09)_0%,transparent_65%)] top-[40%] left-[40%] -translate-x-[55%] -translate-y-[55%]" />
+            <div className="absolute rounded-full pointer-events-none w-[320px] h-[320px] bg-[radial-gradient(circle,rgba(168,85,247,0.07)_0%,transparent_70%)] bottom-[5%] right-[5%]" />
+            <div className="absolute rounded-full pointer-events-none w-[220px] h-[220px] bg-[radial-gradient(circle,rgba(0,240,255,0.06)_0%,transparent_70%)] top-[10%] right-[15%]" />
+            <div className="absolute w-[22px] h-[22px] top-[22px] left-[22px] border-t border-l border-core-cyan animate-cornerPulse" />
+            <div className="absolute w-[22px] h-[22px] bottom-[22px] right-[22px] border-b border-r border-core-purple animate-cornerPulseDelay" />
 
-          .lp-root {
-            font-family: 'Geist', system-ui, sans-serif;
-            background: var(--bg);
-            min-height: 100vh;
-            display: flex;
-            overflow: hidden;
-          }
-
-          /* LEFT */
-          .lp-left {
-            width: 50%; display: flex; flex-direction: column;
-            justify-content: center; align-items: center;
-            padding: 48px 56px; position: relative;
-            border-right: 1px solid var(--border); overflow: hidden;
-          }
-          .lp-grid {
-            position: absolute; inset: 0;
-            background-image: linear-gradient(var(--border) 1px, transparent 1px),
-                              linear-gradient(90deg, var(--border) 1px, transparent 1px);
-            background-size: 48px 48px;
-            animation: gridShimmer 5s ease-in-out infinite;
-            pointer-events: none;
-          }
-          .lp-blob {
-            position: absolute; width: 360px; height: 360px; border-radius: 50%;
-            background: radial-gradient(circle, rgba(0,240,255,0.055) 0%, transparent 70%);
-            top: 50%; left: 50%; transform: translate(-60%,-60%);
-            pointer-events: none;
-          }
-          .lp-corner { position: absolute; width: 22px; height: 22px; }
-          .lp-tl { top:22px; left:22px; border-top:1px solid var(--cyan); border-left:1px solid var(--cyan); animation:cornerPulse 3s ease-in-out infinite; }
-          .lp-br { bottom:22px; right:22px; border-bottom:1px solid var(--purple); border-right:1px solid var(--purple); animation:cornerPulse 3s ease-in-out infinite 1.5s; }
-
-          .lp-content { position:relative; z-index:1; width:100%; max-width:400px; animation:fadeUp .7s ease forwards; }
-
-          .lp-badge {
-            display:inline-flex; align-items:center; gap:8px;
-            background:rgba(0,240,255,.05); border:1px solid rgba(0,240,255,.15);
-            border-radius:999px; padding:5px 14px 5px 10px; margin-bottom:32px;
-          }
-          .lp-badge-dot {
-            width:6px; height:6px; border-radius:50%; background:var(--cyan);
-            animation:liveFlash 2s ease-in-out infinite; box-shadow:0 0 6px var(--cyan);
-          }
-          .lp-badge-text {
-            font-family:'JetBrains Mono',monospace; font-size:11px;
-            color:rgba(0,240,255,.7); letter-spacing:.08em;
-          }
-
-          .lp-headline {
-            font-size: clamp(28px,3.5vw,42px); font-weight:800;
-            line-height:1.1; letter-spacing:-.03em; margin-bottom:16px;
-            background:linear-gradient(135deg,#fff 0%,#c0e8ff 40%,#00f0ff 70%,#a855f7 100%);
-            -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
-          }
-          .lp-sub {
-            font-size:14px; color:rgba(255,255,255,.32); line-height:1.65;
-            margin-bottom:40px; font-weight:300; letter-spacing:.01em;
-          }
-
-          /* Card */
-          .lp-card {
-            background:rgba(255,255,255,.025); border:1px solid var(--border);
-            border-radius:16px; padding:24px; backdrop-filter:blur(20px);
-            position:relative; overflow:hidden;
-          }
-          .lp-card::before {
-            content:''; position:absolute; top:0; left:0; right:0; height:1px;
-            background:linear-gradient(90deg,transparent,rgba(0,240,255,.28),transparent);
-          }
-
-          /* Toggle */
-          .lp-toggle {
-            display:flex; background:rgba(0,0,0,.4); border:1px solid var(--border);
-            border-radius:999px; padding:3px; margin-bottom:24px; position:relative;
-          }
-          .lp-slider {
-            position:absolute; top:3px; bottom:3px; left:3px;
-            width:calc(50% - 3px);
-            background:linear-gradient(135deg,rgba(0,240,255,.12),rgba(168,85,247,.12));
-            border:1px solid rgba(0,240,255,.25); border-radius:999px;
-            transition:transform .35s cubic-bezier(.34,1.3,.64,1);
-            box-shadow:0 0 16px rgba(0,240,255,.08);
-          }
-          .lp-tbtn {
-            flex:1; text-align:center; padding:8px 0;
-            font-family:'JetBrains Mono',monospace; font-size:11.5px;
-            letter-spacing:.06em; cursor:pointer; position:relative; z-index:1;
-            border:none; background:transparent; border-radius:999px;
-            transition:color .25s;
-          }
-
-          /* Forms */
-          .lp-form-wrap { position:relative; }
-          .lp-form { display:flex; flex-direction:column; gap:12px; transition:opacity .3s,transform .3s; }
-          .lp-hidden { opacity:0; transform:translateY(6px); pointer-events:none; position:absolute; top:0; left:0; right:0; }
-          .lp-visible { opacity:1; transform:translateY(0); animation:formFadeIn .3s ease forwards; }
-
-          .lp-field { display:flex; flex-direction:column; gap:6px; }
-          .lp-label {
-            font-family:'JetBrains Mono',monospace; font-size:10.5px;
-            color:rgba(255,255,255,.22); letter-spacing:.08em;
-          }
-          .lp-input {
-            background:rgba(0,0,0,.55); border:1px solid rgba(255,255,255,.07);
-            border-radius:8px; padding:10px 14px; color:rgba(255,255,255,.85);
-            font-family:'JetBrains Mono',monospace; font-size:13px;
-            outline:none; transition:border-color .2s,box-shadow .2s; width:100%;
-          }
-          .lp-input::placeholder { color:rgba(255,255,255,.18); }
-          .lp-input:focus {
-            border-color:rgba(0,240,255,.4);
-            box-shadow:0 0 0 3px rgba(0,240,255,.07),inset 0 0 12px rgba(0,240,255,.02);
-          }
-          .lp-submit {
-            margin-top:4px; padding:12px; width:100%; border-radius:8px;
-            border:1px solid rgba(0,240,255,.3);
-            background:linear-gradient(135deg,rgba(0,240,255,.1),rgba(168,85,247,.08));
-            color:var(--cyan); font-family:'JetBrains Mono',monospace;
-            font-size:12px; font-weight:500; letter-spacing:.07em;
-            cursor:pointer; position:relative; overflow:hidden;
-            transition:box-shadow .25s,border-color .25s,transform .1s;
-          }
-          .lp-submit::after {
-            content:''; position:absolute; inset:0;
-            background:linear-gradient(135deg,rgba(0,240,255,.15),rgba(168,85,247,.15));
-            opacity:0; transition:opacity .25s;
-          }
-          .lp-submit:hover::after { opacity:1; }
-          .lp-submit:hover { box-shadow:0 0 24px rgba(0,240,255,.18); border-color:rgba(0,240,255,.5); }
-          .lp-submit:active { transform:scale(.985); }
-
-          .lp-foot {
-            text-align:center; margin-top:20px;
-            font-family:'JetBrains Mono',monospace; font-size:11px;
-            color:rgba(255,255,255,.2);
-          }
-          .lp-foot button {
-            background:none; border:none; cursor:pointer;
-            color:rgba(0,240,255,.5); font-family:inherit; font-size:inherit;
-            text-decoration:underline; text-underline-offset:3px; transition:color .2s;
-          }
-          .lp-foot button:hover { color:var(--cyan); }
-
-          /* RIGHT */
-          .lp-right {
-            width:50%; display:flex; flex-direction:column;
-            justify-content:center; align-items:center;
-            padding:40px 48px; position:relative; overflow:hidden;
-            background:var(--panel);
-          }
-          .lp-scan {
-            position:absolute; left:0; right:0; height:120px;
-            background:linear-gradient(to bottom,transparent,rgba(0,240,255,.025),transparent);
-            animation:scanDown 7s linear infinite; pointer-events:none; z-index:0;
-          }
-          .lp-rglow {
-            position:absolute; inset:0;
-            background:radial-gradient(ellipse 70% 60% at 70% 40%,rgba(168,85,247,.05) 0%,transparent 70%);
-            pointer-events:none;
-          }
-
-          /* IDE */
-          .lp-ide {
-            position:relative; z-index:1; width:100%; max-width:560px;
-            border-radius:14px; overflow:hidden;
-            border:1px solid rgba(255,255,255,.07);
-            box-shadow:0 0 0 1px rgba(0,240,255,.04),0 40px 100px rgba(0,0,0,.7),0 0 80px rgba(0,240,255,.03);
-            animation:fadeUp .8s .15s ease both;
-          }
-          .lp-titlebar {
-            display:flex; align-items:center; justify-content:space-between;
-            padding:11px 16px;
-            background:rgba(255,255,255,.03);
-            border-bottom:1px solid rgba(255,255,255,.05);
-          }
-          .lp-dots { display:flex; align-items:center; gap:7px; }
-          .lp-dot { width:12px; height:12px; border-radius:50%; box-shadow:inset 0 -1px 2px rgba(0,0,0,.3); }
-          .lp-fname { font-family:'JetBrains Mono',monospace; font-size:11px; color:rgba(255,255,255,.22); }
-          .lp-live { display:flex; align-items:center; gap:5px; font-family:'JetBrains Mono',monospace; font-size:10px; color:rgba(74,222,128,.7); }
-          .lp-ldot { width:5px; height:5px; border-radius:50%; background:#4ade80; animation:liveFlash 1.5s ease-in-out infinite; box-shadow:0 0 5px #4ade80; }
-
-          .lp-tabs { display:flex; background:rgba(0,0,0,.3); border-bottom:1px solid rgba(255,255,255,.04); }
-          .lp-tab { padding:8px 18px; font-family:'JetBrains Mono',monospace; font-size:11px; }
-          .lp-tact { color:rgba(0,240,255,.7); border-bottom:1px solid rgba(0,240,255,.4); background:rgba(0,240,255,.03); }
-          .lp-tinact { color:rgba(255,255,255,.2); }
-
-          .lp-editor { display:flex; background:rgba(0,0,0,.5); min-height:200px; }
-          .lp-gutter {
-            display:flex; flex-direction:column; padding:16px 12px;
-            background:rgba(0,0,0,.25); border-right:1px solid rgba(255,255,255,.03);
-            min-width:44px; user-select:none;
-          }
-          .lp-ln { font-family:'JetBrains Mono',monospace; font-size:11.5px; line-height:1.75; color:rgba(255,255,255,.12); text-align:right; }
-          .lp-cbody { padding:16px 20px; overflow-x:auto; flex:1; }
-          .lp-cline { font-family:'JetBrains Mono',monospace; font-size:12.5px; line-height:1.75; white-space:nowrap; animation:fadeUp .4s ease both; }
-
-          .lp-terminal {
-            background:rgba(0,0,0,.65); border-top:1px solid rgba(255,255,255,.04);
-            padding:16px 20px 20px; min-height:220px; overflow-y:auto;
-          }
-          .lp-thead {
-            font-family:'JetBrains Mono',monospace; font-size:10px;
-            color:rgba(255,255,255,.18); letter-spacing:.1em;
-            margin-bottom:12px; border-bottom:1px solid rgba(255,255,255,.04); padding-bottom:8px;
-          }
-          .lp-sbar {
-            display:flex; justify-content:space-between; align-items:center;
-            padding:6px 16px; background:rgba(0,240,255,.05);
-            border-top:1px solid rgba(0,240,255,.1);
-          }
-          .lp-stat { font-family:'JetBrains Mono',monospace; font-size:10.5px; color:rgba(0,240,255,.45); letter-spacing:.05em; display:flex; align-items:center; gap:16px; }
-
-          .lp-peers { display:flex; margin-top:20px; gap:10px; align-items:center; }
-          .lp-peer {
-            width:28px; height:28px; border-radius:50%;
-            border:1px solid rgba(0,240,255,.2);
-            display:flex; align-items:center; justify-content:center;
-            font-family:'JetBrains Mono',monospace; font-size:10px;
-            color:rgba(0,240,255,.6); background:rgba(0,240,255,.05);
-          }
-          .lp-plabel { font-family:'JetBrains Mono',monospace; font-size:11px; color:rgba(255,255,255,.2); }
-
-          @media(max-width:768px){
-            .lp-root{flex-direction:column;}
-            .lp-left,.lp-right{width:100%;padding:36px 24px;}
-            .lp-right{border-top:1px solid var(--border);}
-            .lp-content,.lp-ide{max-width:100%;}
-          }
-        `}</style>
-
-        <div className="lp-root">
-
-          {/* ══════════════ LEFT — Hero & Auth ══════════════ */}
-          <div className="lp-left">
-            <div className="lp-grid" />
-            <div className="lp-blob" />
-            <div className="lp-corner lp-tl" />
-            <div className="lp-corner lp-br" />
-
-            <div className="lp-content">
-              <div className="lp-badge">
-                <span className="lp-badge-dot" />
-                <span className="lp-badge-text">BETA · 6 peers online</span>
+            <div className="relative z-10 w-full max-w-[400px] animate-fadeUp">
+              <div className="inline-flex items-center gap-2 bg-core-cyan/5 border border-core-cyan/15 rounded-full py-[5px] pr-[14px] pl-[10px] mb-8">
+                <span className="w-[6px] h-[6px] rounded-full bg-core-cyan animate-liveFlash shadow-[0_0_6px_var(--cyan)]" />
+                <span className="font-mono text-[11px] text-core-cyan/70 tracking-widest">BETA · 6 peers online</span>
               </div>
-
-              <h1 className="lp-headline">
+              <h1 className="text-[clamp(28px,3.5vw,42px)] font-extrabold leading-[1.1] tracking-tight mb-4 text-transparent bg-clip-text bg-[linear-gradient(135deg,#fff_0%,#c0e8ff_40%,#00f0ff_70%,#a855f7_100%)]">
                 Code Together.<br />Execute Anywhere.
               </h1>
-              <p className="lp-sub">
+              <p className="text-[14px] text-white/30 leading-relaxed mb-10 font-light tracking-wide">
                 A zero-latency collaborative IDE built for engineering teams who ship at the speed of thought.
               </p>
 
-              {/* Auth card */}
-              <div className="lp-card">
-                {/* Toggle pill */}
-                <div className="lp-toggle">
-                  <div
-                    className="lp-slider"
-                    style={{ transform: isSignup ? "translateX(0)" : "translateX(calc(100%))" }}
-                  />
-                  <button
-                    type="button"
-                    className="lp-tbtn"
-                    style={{ color: isSignup ? "rgba(0,240,255,.9)" : "rgba(255,255,255,.28)" }}
-                    onClick={() => setisSignup(true)}
-                  >
-                    _sign_up
-                  </button>
-                  <button
-                    type="button"
-                    className="lp-tbtn"
-                    style={{ color: !isSignup ? "rgba(0,240,255,.9)" : "rgba(255,255,255,.28)" }}
-                    onClick={() => setisSignup(false)}
-                  >
-                    _sign_in
-                  </button>
+              {/* Auth Card */}
+              <div className="bg-white/[0.025] border border-core-border rounded-2xl p-6 backdrop-blur-xl relative overflow-hidden">
+                <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-core-cyan/30 to-transparent" />
+                
+                <div className="flex bg-black/40 border border-core-border rounded-full p-[3px] mb-6 relative">
+                  <div className="absolute top-[3px] bottom-[3px] left-[3px] w-[calc(50%-3px)] bg-gradient-to-br from-core-cyan/10 to-core-purple/10 border border-core-cyan/25 rounded-full transition-transform duration-300 ease-[cubic-bezier(0.34,1.3,0.64,1)] shadow-[0_0_16px_rgba(0,240,255,0.08)]" style={{ transform: isSignup ? "translateX(0)" : "translateX(100%)" }} />
+                  <button type="button" className="flex-1 text-center py-2 font-mono text-[11.5px] tracking-[0.06em] cursor-pointer relative z-10 transition-colors" style={{ color: isSignup ? "rgba(0,240,255,0.9)" : "rgba(255,255,255,0.28)" }} onClick={() => setisSignup(true)}>_sign_up</button>
+                  <button type="button" className="flex-1 text-center py-2 font-mono text-[11.5px] tracking-[0.06em] cursor-pointer relative z-10 transition-colors" style={{ color: !isSignup ? "rgba(0,240,255,0.9)" : "rgba(255,255,255,0.28)" }} onClick={() => setisSignup(false)}>_sign_in</button>
                 </div>
 
-                {/* Forms */}
-                <div className="lp-form-wrap">
-
-                  {/* Sign Up */}
-                  <div className={`lp-form ${isSignup ? "lp-visible" : "lp-hidden"}`}>
-                    <form style={{ display: "flex", flexDirection: "column", gap: "12px" }} onSubmit={handlesignup}>
-                      <div className="lp-field">
-                        <label className="lp-label">username</label>
-                        <input name="username" className="lp-input" type="text" placeholder="your_handle" tabIndex={isSignup ? 0 : -1} />
+                <div className="relative">
+                  <div className={`flex flex-col gap-3 transition-all duration-300 ${isSignup ? "opacity-100 translate-y-0 animate-formFadeIn" : "opacity-0 translate-y-[6px] pointer-events-none absolute inset-0"}`}>
+                    <form className="flex flex-col gap-3" onSubmit={handlesignup}>
+                      <div className="flex flex-col gap-1.5">
+                        <label className="font-mono text-[10.5px] text-white/20 tracking-widest">username</label>
+                        <input name="username" className="bg-black/55 border border-white/5 rounded-lg px-3.5 py-2.5 text-white/85 font-mono text-[13px] outline-none transition-all focus:border-core-cyan/40 focus:shadow-[0_0_0_3px_rgba(0,240,255,0.07),inset_0_0_12px_rgba(0,240,255,0.02)] w-full placeholder:text-white/20" type="text" placeholder="your_handle" tabIndex={isSignup ? 0 : -1} />
                       </div>
-                      <div className="lp-field">
-                        <label className="lp-label">email</label>
-                        <input name="email" className="lp-input" type="text" placeholder="you@company.io" tabIndex={isSignup ? 0 : -1} />
+                      <div className="flex flex-col gap-1.5">
+                        <label className="font-mono text-[10.5px] text-white/20 tracking-widest">email</label>
+                        <input name="email" className="bg-black/55 border border-white/5 rounded-lg px-3.5 py-2.5 text-white/85 font-mono text-[13px] outline-none transition-all focus:border-core-cyan/40 focus:shadow-[0_0_0_3px_rgba(0,240,255,0.07),inset_0_0_12px_rgba(0,240,255,0.02)] w-full placeholder:text-white/20" type="text" placeholder="you@company.io" tabIndex={isSignup ? 0 : -1} />
                       </div>
-                      <div className="lp-field">
-                        <label className="lp-label">password</label>
-                        <input name="password" className="lp-input" type="password" placeholder="••••••••••••" tabIndex={isSignup ? 0 : -1} />
+                      <div className="flex flex-col gap-1.5">
+                        <label className="font-mono text-[10.5px] text-white/20 tracking-widest">password</label>
+                        <input name="password" className="bg-black/55 border border-white/5 rounded-lg px-3.5 py-2.5 text-white/85 font-mono text-[13px] outline-none transition-all focus:border-core-cyan/40 focus:shadow-[0_0_0_3px_rgba(0,240,255,0.07),inset_0_0_12px_rgba(0,240,255,0.02)] w-full placeholder:text-white/20" type="password" placeholder="••••••••••••" tabIndex={isSignup ? 0 : -1} />
                       </div>
-                      <button type="submit" className="lp-submit" tabIndex={isSignup ? 0 : -1}>
-                        → INITIALIZE ACCOUNT
+                      <button type="submit" className="mt-1 p-3 w-full rounded-lg border border-core-cyan/30 bg-gradient-to-br from-core-cyan/10 to-core-purple/10 text-core-cyan font-mono text-xs font-medium tracking-wider cursor-pointer relative overflow-hidden transition-all hover:shadow-[0_0_24px_rgba(0,240,255,0.18)] hover:border-core-cyan/50 active:scale-[0.985] group" tabIndex={isSignup ? 0 : -1}>
+                        <div className="absolute inset-0 bg-gradient-to-br from-core-cyan/15 to-core-purple/15 opacity-0 transition-opacity group-hover:opacity-100 pointer-events-none" />
+                        <span className="relative z-10">→ INITIALIZE ACCOUNT</span>
                       </button>
                     </form>
                   </div>
 
-                  {/* Sign In */}
-                  <div className={`lp-form ${!isSignup ? "lp-visible" : "lp-hidden"}`}>
-                    <form style={{ display: "flex", flexDirection: "column", gap: "12px" }} onSubmit={handlesignin}>
-                      <div className="lp-field">
-                        <label className="lp-label">email</label>
-                        <input name="email" className="lp-input" type="text" placeholder="you@company.io" tabIndex={!isSignup ? 0 : -1} />
+                  <div className={`flex flex-col gap-3 transition-all duration-300 ${!isSignup ? "opacity-100 translate-y-0 animate-formFadeIn" : "opacity-0 translate-y-[6px] pointer-events-none absolute inset-0"}`}>
+                    <form className="flex flex-col gap-3" onSubmit={handlesignin}>
+                      <div className="flex flex-col gap-1.5">
+                        <label className="font-mono text-[10.5px] text-white/20 tracking-widest">email</label>
+                        <input name="email" className="bg-black/55 border border-white/5 rounded-lg px-3.5 py-2.5 text-white/85 font-mono text-[13px] outline-none transition-all focus:border-core-cyan/40 focus:shadow-[0_0_0_3px_rgba(0,240,255,0.07),inset_0_0_12px_rgba(0,240,255,0.02)] w-full placeholder:text-white/20" type="text" placeholder="you@company.io" tabIndex={!isSignup ? 0 : -1} />
                       </div>
-                      <div className="lp-field">
-                        <label className="lp-label">password</label>
-                        <input name="password" className="lp-input" type="password" placeholder="••••••••••••" tabIndex={!isSignup ? 0 : -1} />
+                      <div className="flex flex-col gap-1.5">
+                        <label className="font-mono text-[10.5px] text-white/20 tracking-widest">password</label>
+                        <input name="password" className="bg-black/55 border border-white/5 rounded-lg px-3.5 py-2.5 text-white/85 font-mono text-[13px] outline-none transition-all focus:border-core-cyan/40 focus:shadow-[0_0_0_3px_rgba(0,240,255,0.07),inset_0_0_12px_rgba(0,240,255,0.02)] w-full placeholder:text-white/20" type="password" placeholder="••••••••••••" tabIndex={!isSignup ? 0 : -1} />
                       </div>
-                      <button type="submit" className="lp-submit" tabIndex={!isSignup ? 0 : -1}>
-                        → AUTHENTICATE
+                      <button type="submit" className="mt-1 p-3 w-full rounded-lg border border-core-cyan/30 bg-gradient-to-br from-core-cyan/10 to-core-purple/10 text-core-cyan font-mono text-xs font-medium tracking-wider cursor-pointer relative overflow-hidden transition-all hover:shadow-[0_0_24px_rgba(0,240,255,0.18)] hover:border-core-cyan/50 active:scale-[0.985] group" tabIndex={!isSignup ? 0 : -1}>
+                        <div className="absolute inset-0 bg-gradient-to-br from-core-cyan/15 to-core-purple/15 opacity-0 transition-opacity group-hover:opacity-100 pointer-events-none" />
+                        <span className="relative z-10">→ AUTHENTICATE</span>
                       </button>
                     </form>
                   </div>
                 </div>
 
-                <div className="lp-foot">
+                <div className="text-center mt-5 font-mono text-[11px] text-white/20">
                   {isSignup ? "// already deployed?" : "// new to codelink?"}{" "}
-                  <button type="button" onClick={() => setisSignup(!isSignup)}>
+                  <button type="button" className="text-core-cyan/50 hover:text-core-cyan underline underline-offset-4 transition-colors" onClick={() => setisSignup(!isSignup)}>
                     {isSignup ? "sign_in()" : "sign_up()"}
                   </button>
                 </div>
@@ -503,92 +313,159 @@
             </div>
           </div>
 
-          {/* ══════════════ RIGHT — IDE Demo ══════════════ */}
-          <div className="lp-right">
-            <div className="lp-scan" />
-            <div className="lp-rglow" />
-
-            <div className="lp-ide">
-              {/* Title bar */}
-              <div className="lp-titlebar">
-                <div className="lp-dots">
-                  <div className="lp-dot" style={{ background: "#ff5f57" }} />
-                  <div className="lp-dot" style={{ background: "#ffbd2e" }} />
-                  <div className="lp-dot" style={{ background: "#28c840" }} />
+          {/* RIGHT — IDE demo */}
+          <div className="w-full md:w-1/2 flex flex-col justify-center items-center py-10 px-6 md:px-12 relative overflow-hidden bg-core-panel">
+            <div className="absolute left-0 right-0 h-[120px] bg-gradient-to-b from-transparent via-core-cyan/5 to-transparent animate-scanDown pointer-events-none z-0" />
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_60%_at_70%_40%,rgba(168,85,247,0.05)_0%,transparent_70%)] pointer-events-none" />
+            
+            <div className="relative z-10 w-full max-w-[560px] rounded-2xl overflow-hidden border border-white/5 shadow-[0_0_0_1px_rgba(0,240,255,0.04),0_40px_100px_rgba(0,0,0,0.7),0_0_80px_rgba(0,240,255,0.03)] animate-[fadeUp_0.8s_0.15s_ease_both]">
+              <div className="flex items-center justify-between px-4 py-3 bg-white/5 border-b border-white/5">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-[#ff5f57] shadow-[inset_0_-1px_2px_rgba(0,0,0,0.3)]" />
+                  <div className="w-3 h-3 rounded-full bg-[#ffbd2e] shadow-[inset_0_-1px_2px_rgba(0,0,0,0.3)]" />
+                  <div className="w-3 h-3 rounded-full bg-[#28c840] shadow-[inset_0_-1px_2px_rgba(0,0,0,0.3)]" />
                 </div>
-                <span className="lp-fname">session.ts — codelink/runtime</span>
-                <div className="lp-live">
-                  <div className="lp-ldot" />
-                  LIVE
+                <span className="font-mono text-[11px] text-white/20">session.ts — codelink/runtime</span>
+                <div className="flex items-center gap-1.5 font-mono text-[10px] text-[#4ade80]/70">
+                  <div className="w-[5px] h-[5px] rounded-full bg-[#4ade80] shadow-[0_0_5px_#4ade80] animate-liveFlashFast" />LIVE
                 </div>
               </div>
 
-              {/* Tabs */}
-              <div className="lp-tabs">
-                <div className="lp-tab lp-tact">session.ts</div>
-                <div className="lp-tab lp-tinact">sync.ts</div>
-                <div className="lp-tab lp-tinact">relay.ts</div>
+              <div className="flex bg-black/30 border-b border-white/5">
+                <div className="px-4 py-2 font-mono text-[11px] text-core-cyan/70 border-b border-core-cyan/40 bg-core-cyan/5">session.ts</div>
+                <div className="px-4 py-2 font-mono text-[11px] text-white/20">sync.ts</div>
+                <div className="px-4 py-2 font-mono text-[11px] text-white/20">relay.ts</div>
               </div>
 
-              {/* Code editor */}
-              <div className="lp-editor">
-                <div className="lp-gutter">
-                  {CODE_LINES.map(l => (
-                    <span key={l.ln} className="lp-ln">{l.ln}</span>
-                  ))}
-                  <span className="lp-ln" style={{ color: "rgba(0,240,255,.25)" }}>12</span>
+              <div className="flex bg-black/50 min-h-[200px]">
+                <div className="flex flex-col py-4 px-3 bg-black/25 border-r border-white/5 min-w-[44px] select-none">
+                  {CODE_LINES.map(l => (<span key={l.ln} className="font-mono text-[11.5px] leading-[1.75] text-white/10 text-right">{l.ln}</span>))}
+                  <span className="font-mono text-[11.5px] leading-[1.75] text-core-cyan/25 text-right">12</span>
                 </div>
-                <div className="lp-cbody">
+                <div className="py-4 px-5 overflow-x-auto flex-1">
                   {CODE_LINES.map((line, i) => (
-                    <div key={i} className="lp-cline" style={{ animationDelay: `${i * 60}ms` }}>
-                      {line.tokens.map((tok, j) => (
-                        <CodeToken key={j} t={tok.t} v={tok.v} />
-                      ))}
+                    <div key={i} className="font-mono text-[12.5px] leading-[1.75] whitespace-nowrap animate-fadeUpFast" style={{ animationDelay: `${i * 60}ms` }}>
+                      {line.tokens.map((tok, j) => (<CodeToken key={j} t={tok.t} v={tok.v} />))}
                     </div>
                   ))}
-                  {/* Blinking cursor */}
-                  <div className="lp-cline" style={{ animationDelay: `${CODE_LINES.length * 60}ms` }}>
-                    <span style={{
-                      display: "inline-block", width: "7px", height: "14px",
-                      background: "rgba(0,240,255,.7)", borderRadius: "1px",
-                      verticalAlign: "middle", animation: "blink 1s step-end infinite",
-                    }} />
+                  <div className="font-mono text-[12.5px] leading-[1.75] whitespace-nowrap animate-fadeUpFast" style={{ animationDelay: `${CODE_LINES.length * 60}ms` }}>
+                    <span className="inline-block w-[7px] h-[14px] bg-core-cyan/70 rounded-[1px] align-middle animate-blink" />
                   </div>
                 </div>
               </div>
 
-              {/* Terminal */}
-              <div className="lp-terminal">
-                <div className="lp-thead">TERMINAL — zsh · node v22.0.0</div>
+              <div className="bg-black/65 border-t border-white/5 pt-3.5 pb-4 px-5">
+                <div className="font-mono text-[10px] text-white/20 tracking-widest mb-2.5 border-b border-white/5 pb-2">TERMINAL — zsh · node v22.0.0</div>
                 <TerminalOutput />
               </div>
 
-              {/* Status bar */}
-              <div className="lp-sbar">
-                <div className="lp-stat">
-                  <span>TypeScript</span>
-                  <span>UTF-8</span>
-                  <span>Ln 12, Col 1</span>
-                </div>
-                <div className="lp-stat">
-                  <span>Git: main ✓</span>
-                  <span>6 peers</span>
-                </div>
+              <div className="flex justify-between items-center px-4 py-1.5 bg-core-cyan/5 border-t border-core-cyan/10">
+                <div className="font-mono text-[10.5px] text-core-cyan/45 tracking-wider flex items-center gap-4"><span>TypeScript</span><span>UTF-8</span><span>Ln 12, Col 1</span></div>
+                <div className="font-mono text-[10.5px] text-core-cyan/45 tracking-wider flex items-center gap-4"><span>Git: main ✓</span><span>6 peers</span></div>
               </div>
             </div>
 
-            {/* Peer avatars */}
-            <div className="lp-peers">
-              <span className="lp-plabel">collaborating:</span>
-              {["AK", "SR", "JL", "DM", "RB", "+2"].map(p => (
-                <div key={p} className="lp-peer">{p}</div>
-              ))}
+            <div className="flex mt-5 gap-2.5 items-center">
+              <span className="font-mono text-[11px] text-white/20">collaborating:</span>
+              {["AK", "SR", "JL", "DM", "RB", "+2"].map(p => (<div key={p} className="w-7 h-7 rounded-full border border-core-cyan/20 flex items-center justify-center font-mono text-[10px] text-core-cyan/60 bg-core-cyan/5">{p}</div>))}
             </div>
           </div>
-
         </div>
-      </>
-    )
-  }
 
-  export default Landingpage
+        {/* Features Section */}
+        <section id="features" ref={featuresReveal.ref} className={`bg-core-bg border-t border-core-border py-24 px-5 md:px-12 relative overflow-hidden transition-opacity duration-500 ${featuresReveal.revealed ? 'opacity-100 animate-revealZoom' : 'opacity-0'}`}>
+          <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_60%_50%_at_30%_20%,rgba(0,240,255,0.03)_0%,transparent_60%),radial-gradient(ellipse_50%_40%_at_70%_80%,rgba(168,85,247,0.03)_0%,transparent_60%)]" />
+          
+          <div className="text-center mb-16 relative z-10">
+            <div className="font-mono text-[11px] tracking-[0.2em] text-core-cyan mb-4 drop-shadow-[0_0_20px_rgba(0,240,255,0.5)]">{'>'} CORE CAPABILITIES</div>
+            <h2 className="text-[clamp(28px,4vw,40px)] font-extrabold tracking-tight text-white/90 mb-4">Built for Real-Time Collaboration</h2>
+            <p className="text-[15px] text-white/35 max-w-[500px] mx-auto leading-relaxed">Everything you need to code, communicate, and ship together — without leaving your IDE.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-[1100px] mx-auto relative z-10">
+            {FEATURES.map((feature, i) => (
+              <div key={i} className="bg-white/[0.02] border border-white/5 rounded-2xl p-8 relative overflow-hidden backdrop-blur-xl transition-all duration-300 hover:border-core-cyan/25 hover:shadow-[0_0_40px_rgba(0,240,255,0.08),inset_0_0_60px_rgba(0,240,255,0.02)] hover:-translate-y-1 group">
+                <div className="absolute inset-0 rounded-2xl p-[1px] bg-gradient-to-br from-transparent to-transparent transition-colors duration-300 group-hover:from-core-cyan/40 group-hover:to-core-purple/30 pointer-events-none" style={{ WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)', WebkitMaskComposite: 'xor', maskComposite: 'exclude' }} />
+                {feature.badge && <span className="absolute top-5 right-5 font-mono text-[9px] tracking-widest text-core-cyan bg-core-cyan/10 border border-core-cyan/30 rounded px-2.5 py-1 animate-badgeGlow">{feature.badge}</span>}
+                <div className="w-14 h-14 rounded-xl bg-core-cyan/5 border border-core-cyan/15 flex items-center justify-center text-core-cyan mb-5">{feature.icon}</div>
+                <h3 className="font-mono text-base font-semibold text-white/90 mb-3 tracking-wide">{feature.title}</h3>
+                <p className="text-[13px] text-white/40 leading-relaxed">{feature.description}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Creator Section */}
+        <section id="creator" ref={creatorReveal.ref} className={`bg-core-bg border-t border-core-border py-24 px-5 md:px-12 relative overflow-hidden transition-opacity duration-500 ${creatorReveal.revealed ? 'opacity-100 animate-revealZoom' : 'opacity-0'}`}>
+          <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_70%_60%_at_50%_50%,rgba(0,240,255,0.05)_0%,transparent_65%),radial-gradient(ellipse_40%_45%_at_75%_30%,rgba(168,85,247,0.04)_0%,transparent_60%),radial-gradient(ellipse_35%_40%_at_25%_70%,rgba(0,240,255,0.03)_0%,transparent_60%)]" />
+          
+          <div className="text-center mb-16 relative z-10">
+            <div className="font-mono text-[13px] tracking-[0.25em] text-core-cyan mb-4 drop-shadow-[0_0_30px_rgba(0,240,255,0.6),0_0_60px_rgba(0,240,255,0.3)] animate-glowPulse">{'>'} MEET THE CREATOR</div>
+          </div>
+
+          <div className="max-w-[1100px] mx-auto relative z-10">
+            <div className="flex flex-col lg:grid lg:grid-cols-[320px_1fr] gap-10 lg:gap-16 bg-black/50 border border-white/10 rounded-[24px] p-8 md:p-12 backdrop-blur-xl shadow-[0_0_0_1px_rgba(0,240,255,0.05),0_60px_120px_rgba(0,0,0,0.6),0_0_100px_rgba(0,240,255,0.04),inset_0_1px_0_rgba(255,255,255,0.05)]">
+              
+              <div className="flex flex-col md:flex-row lg:flex-col items-center justify-center gap-6 md:gap-8 lg:gap-6">
+                <div className="w-[140px] h-[140px] md:w-[160px] md:h-[160px] lg:w-[220px] lg:h-[220px] rounded-3xl p-1 bg-gradient-to-br from-core-cyan/60 via-core-purple/50 to-core-cyan/60 shadow-[0_0_40px_rgba(0,240,255,0.25),0_0_80px_rgba(0,240,255,0.1),0_0_120px_rgba(168,85,247,0.1)] animate-glowPulse">
+                  <div className="w-full h-full rounded-[20px] overflow-hidden bg-core-cyan/5 border-[3px] border-core-bg flex items-center justify-center">
+                    <img src="/chetan-reading.png" alt="Chetan Wadhwa" className="w-full h-full object-cover grayscale-[10%] transition-all duration-400 hover:grayscale-0 hover:scale-105" onError={(e) => { e.currentTarget.style.display = 'none'; const fb = e.currentTarget.parentElement?.querySelector('.fallback-img') as HTMLElement | null; if (fb) fb.style.display = 'flex' }} />
+                    <div className="fallback-img hidden w-full h-full items-center justify-center flex-col gap-1.5 font-mono text-xs text-core-cyan/30 text-center leading-relaxed">
+                      <span>// avatar</span><span>// not found</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="font-mono text-[13px] text-core-cyan/60 tracking-widest">@chetanwadhwa</div>
+              </div>
+
+              <div className="flex flex-col justify-center">
+                <div className="font-mono text-2xl font-bold text-white/95 mb-2 tracking-wide"><span className="text-core-cyan">chetanw</span>@<span className="text-core-cyan">corewire</span></div>
+                <div className="font-mono text-xs text-white/10 mb-7 tracking-wide">────────────────────────────────────────</div>
+
+                <div className="flex flex-col gap-3.5 mb-7">
+                  <div className="flex items-baseline"><span className="font-mono text-[13px] text-core-cyan tracking-widest min-w-[100px] opacity-70">Name</span><span className="font-mono text-[13px] text-white/15 mx-4">:</span><span className="font-mono text-[14px] text-white/70 leading-relaxed">Chetan Wadhwa</span></div>
+                  <div className="flex items-baseline"><span className="font-mono text-[13px] text-core-cyan tracking-widest min-w-[100px] opacity-70">Role</span><span className="font-mono text-[13px] text-white/15 mx-4">:</span><span className="font-mono text-[14px] text-white/70 leading-relaxed">Full Stack Web Developer</span></div>
+                  <div className="flex items-baseline"><span className="font-mono text-[13px] text-core-cyan tracking-widest min-w-[100px] opacity-70">Stack</span><span className="font-mono text-[13px] text-white/15 mx-4">:</span><span className="font-mono text-[14px] text-white/70 leading-relaxed">TypeScript · Node.js · React · Express · Websockets</span></div>
+                  <div className="flex items-baseline"><span className="font-mono text-[13px] text-core-cyan tracking-widest min-w-[100px] opacity-70">Status</span><span className="font-mono text-[13px] text-white/15 mx-4">:</span><span className="font-mono text-[14px] text-[#4ade80]/80 leading-relaxed">Open to collaborate</span></div>
+                </div>
+
+                <div className="h-[1px] bg-gradient-to-r from-core-cyan/20 via-core-purple/10 to-transparent my-6" />
+
+                <p className="font-sans text-[15px] italic font-light text-white/45 leading-[1.8] border-l-[3px] border-core-cyan/25 pl-5 mb-8">
+                  &ldquo;Specializing in TypeScript and real-time architecture. I like turning hard backend problems into fast, instantly responsive web apps.&rdquo;
+                </p>
+
+                <div className="flex gap-4 flex-wrap">
+                  <a className="font-mono text-xs text-white/40 tracking-wide border border-white/10 rounded-lg px-6 py-3 no-underline flex items-center gap-2.5 transition-all duration-250 cursor-pointer bg-black/30 hover:text-core-cyan hover:border-core-cyan/40 hover:bg-core-cyan/10 hover:shadow-[0_0_30px_rgba(0,240,255,0.15)] hover:-translate-y-0.5" href="https://github.com/Chetanwadhwa03" target="_blank" rel="noreferrer">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.385-1.335-1.755-1.335-1.755-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 21.795 24 17.295 24 12c0-6.63-5.37-12-12-12" /></svg>
+                    [ GITHUB ]
+                  </a>
+                  <a className="font-mono text-xs text-white/40 tracking-wide border border-white/10 rounded-lg px-6 py-3 no-underline flex items-center gap-2.5 transition-all duration-250 cursor-pointer bg-black/30 hover:text-core-cyan hover:border-core-cyan/40 hover:bg-core-cyan/10 hover:shadow-[0_0_30px_rgba(0,240,255,0.15)] hover:-translate-y-0.5" href="https://www.linkedin.com/in/chetan-wadhwa-9174051a3/" target="_blank" rel="noreferrer">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" /></svg>
+                    [ LINKEDIN ]
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Footer */}
+        <footer ref={footerReveal.ref} className={`border-t border-core-border py-5 px-6 md:px-12 flex flex-col md:flex-row items-center justify-between gap-3.5 md:gap-0 bg-black/20 transition-opacity duration-500 ${footerReveal.revealed ? 'opacity-100 animate-revealZoom' : 'opacity-0'}`}>
+          <span className="font-mono text-[10.5px] text-white/15 tracking-wide text-center md:text-left">© 2026 Corewire. All systems operational.</span>
+          <div className="flex flex-wrap items-center justify-center gap-4">
+            <div className="font-mono text-[10px] text-[#4ade80]/50 tracking-widest flex items-center gap-1.5">
+              <span className="w-[5px] h-[5px] rounded-full bg-[#4ade80] shadow-[0_0_5px_rgba(74,222,128,0.5)]" />
+              [ STATUS: ONLINE ]
+            </div>
+            <a className="font-mono text-[10px] text-white/20 tracking-widest cursor-pointer transition-colors hover:text-core-cyan" href="https://github.com/Chetanwadhwa03/Collaborative-Code-Editor-" target="_blank" rel="noreferrer">[ REPO ]</a>
+            <a className="font-mono text-[10px] text-white/20 tracking-widest cursor-pointer transition-colors hover:text-core-cyan" href="chetanwadhwa03@gmail.com">[ CONTACT ]</a>
+          </div>
+        </footer>
+
+      </div>
+    </>
+  )
+}
+
+export default Landingpage

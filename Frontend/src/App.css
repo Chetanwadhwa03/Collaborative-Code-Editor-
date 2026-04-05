@@ -1,1 +1,100 @@
 @import "tailwindcss";
+
+/* Override Toastify's default styles to match our terminal vibe */
+.Toastify__toast-container { font-family: 'JetBrains Mono', monospace !important; font-size: 11.5px !important; letter-spacing: 0.04em !important; }
+.Toastify__toast { background: #09090b !important; border: 1px solid rgba(0,240,255,0.25) !important; border-radius: 4px !important; color: rgba(255,255,255,0.8) !important; box-shadow: none !important; padding: 10px 14px !important; min-height: 0 !important; }
+.Toastify__toast--success { border-color: rgba(74,222,128,0.35) !important; }
+.Toastify__toast--success .Toastify__toast-icon svg { fill: #4ade80 !important; }
+.Toastify__toast--error   { border-color: rgba(255,80,80,0.35)  !important; }
+.Toastify__toast--error .Toastify__toast-icon svg   { fill: #ff5f5f !important; }
+.Toastify__toast-body { padding: 0 !important; margin: 0 !important; gap: 8px !important; }
+.Toastify__progress-bar--success { background: #4ade80 !important; height: 1px !important; }
+.Toastify__progress-bar--error   { background: #ff5f5f !important; height: 1px !important; }
+
+/* ── TAILWIND v4 THEME CONFIGURATION ── */
+@theme {
+  /* 1. Custom Colors */
+  --color-core-cyan: #00f0ff;
+  --color-core-purple: #a855f7;
+  --color-core-green: #4ade80;
+  --color-core-bg: #09090b;
+  --color-core-panel: #0d0d10;
+  --color-core-border: rgba(255, 255, 255, 0.06);
+
+  /* 2. Custom Animation Triggers */
+  --animate-blink: blink 1s step-start infinite;
+  --animate-termLine: termLine 0.2s ease forwards;
+  --animate-fadeUp: fadeUp 0.7s ease forwards;
+  --animate-fadeUpFast: fadeUp 0.4s ease both;
+  --animate-scanDown: scanDown 7s linear infinite;
+  --animate-gridShimmer: gridShimmer 5s ease-in-out infinite;
+  --animate-cornerPulse: cornerPulse 3s ease-in-out infinite;
+  --animate-cornerPulseDelay: cornerPulse 3s ease-in-out infinite 1.5s;
+  --animate-liveFlash: liveFlash 2s ease-in-out infinite;
+  --animate-liveFlashFast: liveFlash 1.5s ease-in-out infinite;
+  --animate-formFadeIn: formFadeIn 0.3s ease forwards;
+  --animate-cursorPulse: blink 1s step-start infinite, cursorPulse 2s ease-in-out infinite;
+  --animate-revealZoom: revealZoom 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-splash: splashPulse 1.5s ease-in-out 2, splashExit 0.5s ease-in-out 2s forwards;
+  --animate-glowPulse: glowPulse 3s ease-in-out infinite;
+  --animate-badgeGlow: badgeGlow 2s ease-in-out infinite;
+
+  /* 3. Custom Keyframes */
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+  @keyframes termLine {
+    from { opacity: 0; transform: translateX(-4px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes scanDown {
+    0% { top: -10%; opacity: 0; }
+    10%, 90% { opacity: 0.04; }
+    100% { top: 110%; opacity: 0; }
+  }
+  @keyframes gridShimmer {
+    0%, 100% { opacity: 0.04; }
+    50% { opacity: 0.09; }
+  }
+  @keyframes cornerPulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+  }
+  @keyframes liveFlash {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.25; }
+  }
+  @keyframes formFadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes cursorPulse {
+    0%, 100% { box-shadow: 0 0 8px rgba(0,240,255,0.5); }
+    50% { box-shadow: 0 0 18px rgba(0,240,255,0.9); }
+  }
+  @keyframes revealZoom {
+    from { opacity: 0; transform: scale(0.85) translateY(60px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  @keyframes splashPulse {
+    0%, 100% { opacity: 0.6; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.02); }
+  }
+  @keyframes splashExit {
+    0% { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(1.15); }
+  }
+  @keyframes glowPulse {
+    0%, 100% { box-shadow: 0 0 20px rgba(0,240,255,0.2), 0 0 40px rgba(0,240,255,0.1); }
+    50% { box-shadow: 0 0 30px rgba(0,240,255,0.4), 0 0 60px rgba(0,240,255,0.2); }
+  }
+  @keyframes badgeGlow {
+    0%, 100% { box-shadow: 0 0 8px rgba(0,240,255,0.4); }
+    50% { box-shadow: 0 0 16px rgba(0,240,255,0.8); }
+  }
+}

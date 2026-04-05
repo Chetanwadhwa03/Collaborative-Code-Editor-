@@ -109,6 +109,7 @@ app.post('/api/v1/signin', async (req, res) => {
             })
         }
 
+        const username = curruser.name
         const hashedpassword = curruser.password
         const result = bcrypt.compare(hashedpassword, password)
 
@@ -127,7 +128,8 @@ app.post('/api/v1/signin', async (req, res) => {
 
         return res.status(200).json({
             message: 'User Signed in Successfully !!',
-            token: token
+            token: token,
+            username: username
         })
     }
     catch (e) {
@@ -144,9 +146,9 @@ app.post('/api/v1/signin', async (req, res) => {
 app.post('/api/v1/create-room', Auth, async (req, res) => {
     try {
         const { roomname } = req.body
-        if(!roomname){
+        if (!roomname) {
             return res.status(400).json({
-                message:'Please Enter the room name !!!'
+                message: 'Please Enter the room name !!!'
             })
         }
 
@@ -214,7 +216,7 @@ app.post('/api/v1/create-room', Auth, async (req, res) => {
 app.get('/api/v1/join-room/:roomId', Auth, async (req, res) => {
     try {
         const { roomId } = req.params
-        
+
         // @ts-ignore
         const currroom = await Roommodel.findOne({
             roomId: roomId
@@ -262,11 +264,11 @@ app.post('/api/v1/run-code', Auth, async (req, res) => {
             "language": language,
             "versionIndex": versionindex
         },
-        {
-            "headers": {
-                "Content-Type": 'application/json'
-            }
-        })
+            {
+                "headers": {
+                    "Content-Type": 'application/json'
+                }
+            })
 
         const output = response.data.output
 
@@ -294,27 +296,27 @@ app.post('/api/v1/run-code', Auth, async (req, res) => {
 })
 
 // For the request coming from the Debounce hook.
-app.post('/api/v1/save-code', async (req,res) => {
-    const {content,croomId} = req.body
+app.post('/api/v1/save-code', async (req, res) => {
+    const { content, croomId } = req.body
 
     const croom = await Roommodel.findOne({
         // @ts-ignore
-        roomId:croomId
+        roomId: croomId
     })
 
 
-    if(!croom){
-       return res.status(400).json({
-        message:'Room Crashed !!!'
-       })
+    if (!croom) {
+        return res.status(400).json({
+            message: 'Room Crashed !!!'
+        })
     }
 
-    
+
     croom.content = content;
     await croom.save();
-    
+
     return res.status(200).json({
-        message:'Content Updated in DB'
+        message: 'Content Updated in DB'
     })
 })
 
@@ -329,15 +331,23 @@ app.listen(3000, () => {
 
 // Websocket Server
 const wss = new WebSocketServer({ port: 8080 });
+
+// string->sockets[]
 let rooms = new Map()
+
+// socket->string
+let socketusername = new Map()
 
 wss.on('connection', (socket) => {
     try {
+        // I have defined this cRoomID for just socket.onclose use.
+        let croomID: string;
         socket.on('message', (data) => {
             const parseddata = JSON.parse(data.toString())
+            const roomId = parseddata.payload.roomId;
+            croomID = roomId;
 
             if (parseddata.type === 'join') {
-                const roomId = parseddata.payload.roomId;
 
                 if (!rooms.has(roomId)) {
                     rooms.set(roomId, [socket])
@@ -346,15 +356,24 @@ wss.on('connection', (socket) => {
                     // roomId already exists in the map, we have to join the room.
                     rooms.get(roomId).push(socket);
                 }
+                socketusername.set(socket, parseddata.payload.username)
 
-                
+                // This would be the array of sockets corresponding to that roomID
+                const croomsockets = rooms.get(roomId);
+                const croomunames = croomsockets.map((csocket: WebSocket) => socketusername.get(csocket))
+
+                // This object is made to send the croomunames present in that roomID
+                const sendingobject = {
+                    type: 'room_users',
+                    userspresent: croomunames
+                }
+
                 // I am sending data here, just for the reason to show everyone that who has joined the room.
                 if (rooms.has(roomId)) {
                     // @ts-ignore
                     rooms.get(roomId).forEach(s => {
-                        if (s != socket) {
-                            s.send(JSON.stringify(parseddata))
-                        }
+                        s.send(JSON.stringify(sendingobject))
+                        s.send(JSON.stringify(parseddata))
                     });
                 }
 
@@ -375,8 +394,42 @@ wss.on('connection', (socket) => {
                     socket.send('The room does not exists !!')
                 }
             }
-
         })
+
+        socket.on('close', () => {
+            if (croomID && rooms.has(croomID)) {
+                let croomsockets = rooms.get(croomID)
+                // @ts-ignore
+                croomsockets = croomsockets.filter((csocket) => csocket !== socket);
+
+                if (croomsockets.length === 0) {
+                    // their is no person sitting in that croomID
+                    rooms.delete(croomID)
+                }
+                else {
+                    // updating the sockets array corresponding to that roomId
+                    rooms.set(croomID, croomsockets);
+
+                    // now since the array of sockets has been updated corresponding to that roomId, then we have to again send the object having the type room_users
+                    const croomunames = croomsockets.map((csocket: WebSocket) => socketusername.get(csocket))
+
+                    const sendingobject = {
+                        type: 'room_users',
+                        userspresent: croomunames
+                    }
+
+                    if (rooms.has(croomID)) {
+                        // @ts-ignore
+                        rooms.get(croomID).forEach(s => {
+                            s.send(JSON.stringify(sendingobject))
+                        });
+                    }
+                }
+
+            }
+        })
+
+
     }
     catch (e) {
         console.log('Error encountered in websocket server as', e);

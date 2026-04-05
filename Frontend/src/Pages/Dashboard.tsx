@@ -1,6 +1,7 @@
 import { useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import axios from 'axios'
+import {toast} from 'react-toastify'
 
 const Dashboard = () => {
   const navigate = useNavigate()
@@ -19,7 +20,7 @@ const Dashboard = () => {
         { "roomname": roomName },
         { "headers": { "authorization": token } }
       )
-      alert(response.data.message)
+      toast.success(response.data.message)
       if (joinroomref.current != null) {
         const obtroomId = response.data.roomId
         joinroomref.current.innerHTML = obtroomId
@@ -29,7 +30,7 @@ const Dashboard = () => {
     } catch (e) {
       setbVisible(true)
       // @ts-ignore
-      alert(e.response.data.message)
+      toast.error(e.response?.data?.message || "Something went wrong!");
     }
   }
 
@@ -42,10 +43,11 @@ const Dashboard = () => {
       )
       navigate(`/Codeeditor/${roomId}`)
       // For now it is alert, but later on we have to use toasts here.
-      alert(response.data.message)
+      toast.success(response.data.message)
     } catch (e) {
+      // @ts-ignore
+      toast.error(e.response?.data?.message || "Something went wrong!");
       // for now i have hardcoded the message, otherwise we have to pick it up from the server.
-      alert("RoomId does not exist")
     }
   }
 

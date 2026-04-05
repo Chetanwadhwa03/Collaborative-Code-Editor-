@@ -1,7 +1,9 @@
 import { Editor } from "@monaco-editor/react"
 import { useEffect, useRef, useState } from "react"
 import axios from 'axios'
-import {useNavigate, useParams } from "react-router-dom"
+import { useNavigate, useParams } from "react-router-dom"
+import {toast} from 'react-toastify'
+
 
 const Codeeditor = () => {
   const navigate = useNavigate()
@@ -22,20 +24,23 @@ const Codeeditor = () => {
       try {
         const token = localStorage.getItem('authorization')
         const response = await axios.get(`http://localhost:3000/api/v1/join-room/${roomId}`,
-        { headers: { authorization: token } })
+          { headers: { authorization: token } })
 
         const fetchedcontent = response.data.content
-        setcurrcontent(fetchedcontent)
+
+        if(fetchedcontent && fetchedcontent.trim() !== ""){
+          setcurrcontent(fetchedcontent)
+        }
       }
       catch (e) {
         // @ts-ignore
-        alert(e.response.data.message)
-         // @ts-ignore
-        if(e.response.data.message === 'Session Expired'){
+        toast.error(e.response?.data?.message || "Something went wrong!");
+        // @ts-ignore
+        if (e.response.data.message === 'Session Expired') {
           localStorage.removeItem('authorization')
           navigate('/')
         }
-        else{
+        else {
           navigate('/Dashboard')
         }
       }
@@ -43,6 +48,8 @@ const Codeeditor = () => {
     getcontent()
 
     // Websocket connection is Established.
+    const username = localStorage.getItem('username') || 'Peer'
+    setuname(username);
     const ws = new WebSocket('ws://localhost:8080')
     setwebsocket(ws)
 
@@ -51,7 +58,7 @@ const Codeeditor = () => {
         type: 'join',
         payload: {
           roomId: roomId,
-          username: uname
+          username: username
         }
       }
       ws.send(JSON.stringify(temproom))
@@ -63,28 +70,24 @@ const Codeeditor = () => {
       const parseddata = JSON.parse(data.data)
 
       if (parseddata.type === 'join') {
+        // To just alert every person in the room including the person who has joined the room.
         const curruser = parseddata.payload.username
-        console.log(curruser)
-        
-       setcroomusers((prevUsers) => {
-          const safePrevUsers = prevUsers || [];
 
-          if (curruser && !safePrevUsers.includes(curruser)) {
-            return [...safePrevUsers, curruser];
-          }
-          return safePrevUsers;
-        });
-
-        if(curruser){
-          alert(`${curruser} has joined the Room!`)
+        if (curruser) {
+          toast.info(`${curruser} has joined the Room!`)
         }
+
       }
       // important
       else if (parseddata.type === 'code') {
         setcurrcontent(parseddata.payload.content)
       }
+      else if(parseddata.type === 'room_users'){
+        const croomunames = parseddata.userspresent
+        setcroomusers(croomunames)
+      }
     }
-    
+
 
     // return ws.onclose()
 
@@ -151,8 +154,8 @@ const Codeeditor = () => {
 
       const message = response.data.message
       const output = response.data.output
-      alert(message)
-
+      toast.info(message)
+     
       setcexecutedvalue(output)
       console.log('output is: ', output)
 
@@ -678,13 +681,13 @@ const Codeeditor = () => {
             <div className="ce-collab-avatars">
               {croomusers && croomusers.map((user, index) => {
                 // Ye logic 1, 2, 3 color classes ko cycle karega har naye user ke liye
-                const avatarColorIndex = (index % 3) + 1; 
-                
+                const avatarColorIndex = (index % 3) + 1;
+
                 return (
-                  <div 
-                    key={index} 
+                  <div
+                    key={index}
                     className={`ce-avatar ce-avatar-${avatarColorIndex}`}
-                    title={user} 
+                    title={user}
                   >
                     {/* User ke naam ka pehla alphabet nikal kar Capitalize kar diya */}
                     {user ? user.charAt(0).toUpperCase() : '?'}
@@ -695,9 +698,9 @@ const Codeeditor = () => {
 
             {/* Dynamic Peers Count */}
             <span className="ce-collab-count">
-              {croomusers && croomusers.length === 1 
-                ? '1 peer' 
-                : `${croomusers && croomusers.length} peers`}
+              {croomusers && croomusers.length === 1
+                ? '1 Person'
+                : `${croomusers && croomusers.length} people`}
             </span>
           </div>
         </div>
