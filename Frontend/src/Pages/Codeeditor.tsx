@@ -37,6 +37,7 @@ const Codeeditor = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, isChatOpen]) // Also scroll when opened
 
+  // Mounting
   useEffect(() => {
     async function getcontent() {
       try {
@@ -120,6 +121,7 @@ const Codeeditor = () => {
     };
   }, [])
 
+  // Debounce hook usuage function to store the data in the DB for that particular room
   async function storeinDB(value: String) {
     try {
       // @ts-ignore
@@ -136,6 +138,7 @@ const Codeeditor = () => {
   // @ts-ignore
   const currclock = useRef(null)
   
+  // to handle the code that is being written from my side.
   // @ts-ignore
   const handlemytype = (value: string | undefined, event) => {
     if (value !== undefined) {
@@ -161,6 +164,7 @@ const Codeeditor = () => {
     websocket?.send(JSON.stringify(data))
   }
 
+  // to Execute the code.
   async function handlerunbutton() {
     try {
       const token = localStorage.getItem('authorization')
@@ -192,6 +196,7 @@ const Codeeditor = () => {
     }
   }
 
+  // this is for sending the text message from my side.
   // @ts-ignore
   const handletext = (e) => {
     if (e.key === 'Enter') {

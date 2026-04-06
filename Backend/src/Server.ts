@@ -342,6 +342,7 @@ wss.on('connection', (socket) => {
     try {
         // I have defined this cRoomID for just socket.onclose use.
         let croomID: string;
+
         socket.on('message', (data) => {
             const parseddata = JSON.parse(data.toString())
             const roomId = parseddata.payload.roomId;
@@ -381,6 +382,7 @@ wss.on('connection', (socket) => {
                 }
 
             }
+
             else if (parseddata.type === 'code') {
                 // parseddata === 'code'
                 if (rooms.has(roomId)) {
@@ -400,6 +402,20 @@ wss.on('connection', (socket) => {
                 // Attaching the username on the parseddata coming from the frontend from the map present in the backend and then broadcasting it.
                 parseddata.payload.username = socketusername.get(socket) || 'Peer'
 
+                if (rooms.has(roomId)) {
+                    // @ts-ignore
+                    rooms.get(roomId).forEach(s => {
+                        if (s != socket) {
+                            s.send(JSON.stringify(parseddata))
+                        }
+                    });
+                }
+                else {
+                    socket.send('The room does not exists !!')
+                }
+            }
+            else if (parseddata.type === 'cursor-position') {
+               
                 if (rooms.has(roomId)) {
                     // @ts-ignore
                     rooms.get(roomId).forEach(s => {
