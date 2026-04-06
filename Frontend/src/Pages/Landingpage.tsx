@@ -136,6 +136,9 @@ const FEATURES = [
 ]
 
 const Landingpage = () => {
+  localStorage.removeItem('authorization')
+  localStorage.removeItem('username')
+  
   const [isSignup, setisSignup] = useState<boolean>(true)
   const [showSplash, setShowSplash] = useState(true)
 
@@ -153,6 +156,7 @@ const Landingpage = () => {
 
   const scrollToTop = () => window.scrollTo({ top: 0, behavior: "smooth" })
 
+ 
   // @ts-ignore
   async function handlesignup(e) {
     e.preventDefault()

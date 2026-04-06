@@ -362,10 +362,13 @@ wss.on('connection', (socket) => {
                 const croomsockets = rooms.get(roomId);
                 const croomunames = croomsockets.map((csocket: WebSocket) => socketusername.get(csocket))
 
+                // This is important because sometimes a same username is associated with more than one socket, so we need every socket to send the message but getting the usernames we can make them unique using a set so that it shows correct number of users in the dynamic island
+                const uniqueusers = [...new Set(croomunames)];
+
                 // This object is made to send the croomunames present in that roomID
                 const sendingobject = {
                     type: 'room_users',
-                    userspresent: croomunames
+                    userspresent: uniqueusers
                 }
 
                 // I am sending data here, just for the reason to show everyone that who has joined the room.
@@ -380,7 +383,22 @@ wss.on('connection', (socket) => {
             }
             else if (parseddata.type === 'code') {
                 // parseddata === 'code'
-                const roomId = parseddata.payload.roomId;
+                if (rooms.has(roomId)) {
+                    // @ts-ignore
+                    rooms.get(roomId).forEach(s => {
+                        if (s != socket) {
+                            s.send(JSON.stringify(parseddata))
+                        }
+                    });
+                }
+                else {
+                    socket.send('The room does not exists !!')
+                }
+            }
+
+            else if (parseddata.type === 'chat') {
+                // Attaching the username on the parseddata coming from the frontend from the map present in the backend and then broadcasting it.
+                parseddata.payload.username = socketusername.get(socket) || 'Peer'
 
                 if (rooms.has(roomId)) {
                     // @ts-ignore
@@ -412,10 +430,12 @@ wss.on('connection', (socket) => {
 
                     // now since the array of sockets has been updated corresponding to that roomId, then we have to again send the object having the type room_users
                     const croomunames = croomsockets.map((csocket: WebSocket) => socketusername.get(csocket))
+                    const uniqueusers = [...new Set(croomunames)];
+
 
                     const sendingobject = {
                         type: 'room_users',
-                        userspresent: croomunames
+                        userspresent: uniqueusers
                     }
 
                     if (rooms.has(croomID)) {

@@ -2,8 +2,7 @@ import { Editor } from "@monaco-editor/react"
 import { useEffect, useRef, useState } from "react"
 import axios from 'axios'
 import { useNavigate, useParams } from "react-router-dom"
-import {toast} from 'react-toastify'
-
+import { toast } from 'react-toastify'
 
 const Codeeditor = () => {
   const navigate = useNavigate()
@@ -14,12 +13,31 @@ const Codeeditor = () => {
   const [cexecutedvalue, setcexecutedvalue] = useState<string>()
   const [croomusers, setcroomusers] = useState<string[]>()
   const { roomId } = useParams()
+  const [messages, setmessages] = useState<string[]>([])
+  const textref = useRef<HTMLInputElement>(null)
+  
+  // Chat State
+  const [isChatOpen, setIsChatOpen] = useState(false)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  
+  // NEW: Unread Messages State & Ref
+  const [unreadCount, setUnreadCount] = useState(0)
+  const isChatOpenRef = useRef(isChatOpen)
 
-
-  // On Mounting, the content already present in that room is fetched, websocket connection is established as well as the message on the websocket connection received is displayed on the screen.
+  // NEW: Keep the ref synced with the state, and clear unreads when opened
   useEffect(() => {
+    isChatOpenRef.current = isChatOpen
+    if (isChatOpen) {
+      setUnreadCount(0)
+    }
+  }, [isChatOpen])
 
-    // Before establishing a websocket server, i'll hit the backend to get the content present corresponding to that room.
+  // Auto-scroll chat to bottom
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages, isChatOpen]) // Also scroll when opened
+
+  useEffect(() => {
     async function getcontent() {
       try {
         const token = localStorage.getItem('authorization')
@@ -28,15 +46,15 @@ const Codeeditor = () => {
 
         const fetchedcontent = response.data.content
 
-        if(fetchedcontent && fetchedcontent.trim() !== ""){
+        if (fetchedcontent && fetchedcontent.trim() !== "") {
           setcurrcontent(fetchedcontent)
         }
       }
       catch (e) {
         // @ts-ignore
-        toast.error(e.response?.data?.message || "Something went wrong!");
-        // @ts-ignore
-        if (e.response.data.message === 'Session Expired') {
+        const errorMessage = e.response?.data?.message || "Something went wrong!";
+        toast.error(errorMessage);
+        if (errorMessage === 'Session Expired') {
           localStorage.removeItem('authorization')
           navigate('/')
         }
@@ -47,7 +65,6 @@ const Codeeditor = () => {
     }
     getcontent()
 
-    // Websocket connection is Established.
     const username = localStorage.getItem('username') || 'Peer'
     setuname(username);
     const ws = new WebSocket('ws://localhost:8080')
@@ -64,38 +81,46 @@ const Codeeditor = () => {
       ws.send(JSON.stringify(temproom))
     }
 
-    // When my friend types the code and i have to update it in the editor.
     ws.onmessage = (data) => {
       // @ts-ignore
       const parseddata = JSON.parse(data.data)
 
       if (parseddata.type === 'join') {
-        // To just alert every person in the room including the person who has joined the room.
         const curruser = parseddata.payload.username
-
         if (curruser) {
           toast.info(`${curruser} has joined the Room!`)
         }
-
       }
-      // important
       else if (parseddata.type === 'code') {
         setcurrcontent(parseddata.payload.content)
       }
-      else if(parseddata.type === 'room_users'){
+      else if (parseddata.type === 'room_users') {
         const croomunames = parseddata.userspresent
         setcroomusers(croomunames)
       }
+      else if (parseddata.type === 'chat') {
+        const username = parseddata.payload.username
+        const message = parseddata.payload.message
+
+        setmessages((prev) => {
+          return [...prev, `${username} : ${message}`]
+        })
+
+        // NEW: Increment unread count ONLY if the chat window is currently closed
+        if (!isChatOpenRef.current) {
+          setUnreadCount((prev) => prev + 1)
+        }
+      }
     }
 
-
-    // return ws.onclose()
-
+    return () => {
+      if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+        ws.close();
+      }
+    };
   }, [])
 
-  // Storing the data in the DB, to basically remove the ephemeral storage.
   async function storeinDB(value: String) {
-    // we have to call the backend to give the content present on the screen to the DB
     try {
       // @ts-ignore
       const response = await axios.post('http://localhost:3000/api/v1/save-code', {
@@ -108,9 +133,9 @@ const Codeeditor = () => {
     }
   }
 
-  // When i type the code, i have to send it to the server but i dont have to update the content state.
   // @ts-ignore
   const currclock = useRef(null)
+  
   // @ts-ignore
   const handlemytype = (value: string | undefined, event) => {
     if (value !== undefined) {
@@ -141,7 +166,6 @@ const Codeeditor = () => {
       const token = localStorage.getItem('authorization')
 
       const response = await axios.post('http://localhost:3000/api/v1/run-code', {
-        // for now i have hardcoded the language and the versionindex.
         content: content,
         language: "nodejs",
         versionindex: "4"
@@ -155,7 +179,7 @@ const Codeeditor = () => {
       const message = response.data.message
       const output = response.data.output
       toast.info(message)
-     
+
       setcexecutedvalue(output)
       console.log('output is: ', output)
 
@@ -164,569 +188,107 @@ const Codeeditor = () => {
       const message = e.response ? e.response.data : e.message
       // @ts-ignore
       const error = e.response ? e.response.data : e.error
-
       setcexecutedvalue(error.message)
     }
   }
 
+  // @ts-ignore
+  const handletext = (e) => {
+    if (e.key === 'Enter') {
+      let text = null;
+      if (textref.current != null) {
+        text = textref.current.value
+        textref.current.value = "";
+      }
+
+      let data = null
+      if (text) {
+        setmessages((prev) => {
+          return [...prev, `You : ${text}`]
+        })
+
+        data = {
+          type: 'chat',
+          payload: {
+            message: text,
+            roomId: roomId,
+            username: uname
+          }
+        }
+      }
+
+      if (websocket && websocket.readyState === WebSocket.OPEN) {
+        websocket.send(JSON.stringify(data))
+      }
+    }
+  }
 
   return (
     <>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Manrope:wght@300;400;500;600;700&display=swap');
-
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-        :root {
-          --bg:       #09090b;
-          --c:        #00f0ff;
-          --c8:       rgba(0, 240, 255, 0.08);
-          --c15:      rgba(0, 240, 255, 0.15);
-          --c30:      rgba(0, 240, 255, 0.30);
-          --green:    #4ade80;
-          --g8:       rgba(74, 222, 128, 0.08);
-          --surface:  rgba(0, 0, 0, 0.45);
-          --border:   rgba(255, 255, 255, 0.07);
-          --border2:  rgba(255, 255, 255, 0.11);
-          --t1:       rgba(255, 255, 255, 0.88);
-          --t2:       rgba(255, 255, 255, 0.45);
-          --t3:       rgba(255, 255, 255, 0.20);
-          --mono:     'JetBrains Mono', monospace;
-          --sans:     'Manrope', system-ui, sans-serif;
-          --shadow:   0 32px 80px rgba(0,0,0,0.7), 0 8px 24px rgba(0,0,0,0.5);
-          --shadow-sm: 0 8px 32px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.4);
-        }
-
-        /* ── Keyframes — only smooth, no flicker ────────────────────────── */
-
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(-10px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes slideUp {
-          from { opacity: 0; transform: translateY(10px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes panelRise {
-          from { opacity: 0; transform: translateY(16px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes livePulse {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.4); }
-          50%       { box-shadow: 0 0 0 4px rgba(74, 222, 128, 0); }
-        }
-        @keyframes executeBreathe {
-          0%, 100% { box-shadow: 0 0 0 1px rgba(0,240,255,0.2), 0 0 16px rgba(0,240,255,0.06); }
-          50%       { box-shadow: 0 0 0 1px rgba(0,240,255,0.35), 0 0 28px rgba(0,240,255,0.12); }
-        }
-        @keyframes outputBlink {
-          0%, 100% { border-color: rgba(74,222,128,0.15); }
-          50%       { border-color: rgba(74,222,128,0.28); }
-        }
-
-        /* ── Canvas root ─────────────────────────────────────────────────── */
-
-        .ce-canvas {
-          font-family: var(--sans);
-          background-color: var(--bg);
-          background-image: radial-gradient(circle, rgba(255,255,255,0.055) 1px, transparent 1px);
-          background-size: 28px 28px;
-          min-height: 100vh;
-          height: 100vh;
-          width: 100vw;
-          overflow: hidden;
-          position: relative;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-        }
-
-        /* Ambient depth blobs — no animation, just atmosphere */
-        .ce-canvas::before {
-          content: '';
-          position: fixed;
-          inset: 0;
-          background:
-            radial-gradient(ellipse 50% 40% at 15% 10%, rgba(0,240,255,0.04) 0%, transparent 60%),
-            radial-gradient(ellipse 40% 35% at 85% 90%, rgba(124,58,237,0.04) 0%, transparent 60%),
-            radial-gradient(ellipse 30% 30% at 50% 50%, rgba(0,0,0,0.3) 0%, transparent 70%);
-          pointer-events: none;
-          z-index: 0;
-        }
-
-        /* ── Dynamic Island ──────────────────────────────────────────────── */
-
-        .ce-island {
-          position: fixed;
-          top: 16px;
-          left: 50%;
-          transform: translateX(-50%);
-          z-index: 100;
-          display: flex;
-          align-items: center;
-          gap: 0;
-          background: rgba(10, 10, 14, 0.85);
-          border: 1px solid var(--border2);
-          border-radius: 999px;
-          padding: 0;
-          backdrop-filter: blur(24px);
-          box-shadow: var(--shadow-sm), 0 0 0 1px rgba(255,255,255,0.04);
-          animation: fadeIn 0.5s ease both;
-          white-space: nowrap;
-          overflow: hidden;
-        }
-
-        /* Island left segment */
-        .ce-island-left {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          padding: 9px 16px 9px 14px;
-          border-right: 1px solid var(--border);
-        }
-        .ce-live-dot {
-          width: 7px; height: 7px;
-          border-radius: 50%;
-          background: var(--green);
-          box-shadow: 0 0 6px rgba(74,222,128,0.6);
-          animation: livePulse 2.5s ease-in-out infinite;
-          flex-shrink: 0;
-        }
-        .ce-live-text {
-          font-family: var(--mono);
-          font-size: 10px;
-          font-weight: 500;
-          color: rgba(74,222,128,0.8);
-          letter-spacing: 0.12em;
-        }
-
-        /* Island center — room/file info */
-        .ce-island-center {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          padding: 9px 16px;
-          border-right: 1px solid var(--border);
-        }
-        .ce-island-label {
-          font-family: var(--mono);
-          font-size: 10px;
-          color: var(--t3);
-          letter-spacing: 0.08em;
-        }
-        .ce-island-id {
-          font-family: var(--mono);
-          font-size: 11px;
-          color: var(--c);
-          letter-spacing: 0.06em;
-          opacity: 0.75;
-        }
-
-        /* Island right — collab info */
-        .ce-island-right {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          padding: 9px 14px;
-        }
-        .ce-collab-avatars {
-          display: flex;
-          align-items: center;
-          gap: -4px;
-        }
-        .ce-avatar {
-          width: 20px; height: 20px;
-          border-radius: 50%;
-          border: 1px solid rgba(0,0,0,0.6);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-family: var(--mono);
-          font-size: 8px;
-          font-weight: 600;
-          margin-left: -5px;
-        }
-        .ce-avatar:first-child { margin-left: 0; }
-        .ce-avatar-1 { background: rgba(0,240,255,0.2); color: var(--c); }
-        .ce-avatar-2 { background: rgba(124,58,237,0.2); color: #c084fc; }
-        .ce-avatar-3 { background: rgba(74,222,128,0.2); color: var(--green); }
-        .ce-collab-count {
-          font-family: var(--mono);
-          font-size: 10px;
-          color: var(--t3);
-          letter-spacing: 0.06em;
-        }
-
-        /* ── Main stage ──────────────────────────────────────────────────── */
-
-        .ce-stage {
-          position: relative;
-          z-index: 1;
-          display: flex;
-          align-items: flex-start;
-          gap: 16px;
-          width: 100%;
-          max-width: 100vw;
-          height: 100vh;
-          padding: 82px 20px 80px;
-        }
-
-        /* ── Floating panel base ─────────────────────────────────────────── */
-
-        .ce-panel {
-          display: flex;
-          flex-direction: column;
-          background: var(--surface);
-          border: 1px solid var(--border);
-          border-radius: 12px;
-          overflow: hidden;
-          backdrop-filter: blur(20px);
-          box-shadow: var(--shadow);
-          height: 100%;
-          animation: panelRise 0.6s ease both;
-          transition: border-color 0.3s, box-shadow 0.3s;
-        }
-        .ce-panel:hover {
-          border-color: rgba(255,255,255,0.11);
-        }
-        .ce-panel-editor { flex: 55; animation-delay: 0.05s; }
-        .ce-panel-output { flex: 45; animation-delay: 0.12s; }
-
-        /* Subtle top shimmer on panels */
-        .ce-panel::before {
-          content: '';
-          position: absolute;
-          top: 0; left: 0; right: 0;
-          height: 1px;
-          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
-          pointer-events: none;
-        }
-
-        /* ── Panel title bar ─────────────────────────────────────────────── */
-
-        .ce-titlebar {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 10px 14px;
-          border-bottom: 1px solid var(--border);
-          background: rgba(0,0,0,0.25);
-          flex-shrink: 0;
-        }
-        .ce-titlebar-left {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-        }
-        .ce-traffic-lights {
-          display: flex;
-          gap: 5px;
-          align-items: center;
-        }
-        .ce-dot {
-          width: 10px; height: 10px;
-          border-radius: 50%;
-          opacity: 0.75;
-        }
-        .ce-dot-r { background: #ff5f57; }
-        .ce-dot-y { background: #ffbd2e; }
-        .ce-dot-g { background: #28c840; }
-
-        .ce-panel-title {
-          font-family: var(--mono);
-          font-size: 11px;
-          color: var(--t2);
-          letter-spacing: 0.08em;
-        }
-        .ce-titlebar-right {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-        .ce-lang-badge {
-          font-family: var(--mono);
-          font-size: 9.5px;
-          color: rgba(0,240,255,0.5);
-          background: rgba(0,240,255,0.06);
-          border: 1px solid rgba(0,240,255,0.12);
-          border-radius: 4px;
-          padding: 2px 7px;
-          letter-spacing: 0.08em;
-        }
-        .ce-status-badge {
-          font-family: var(--mono);
-          font-size: 9.5px;
-          color: rgba(74,222,128,0.55);
-          background: rgba(74,222,128,0.06);
-          border: 1px solid rgba(74,222,128,0.12);
-          border-radius: 4px;
-          padding: 2px 7px;
-          letter-spacing: 0.08em;
-        }
-
-        /* ── Editor wrapper ──────────────────────────────────────────────── */
-
-        .ce-editor-wrap {
-          flex: 1;
-          overflow: hidden;
-          position: relative;
-          min-height: 0;
-        }
-
-        /* Editor line gutter accent */
-        .ce-editor-wrap::after {
-          content: '';
-          position: absolute;
-          top: 0; left: 0;
-          width: 1px; height: 100%;
-          background: linear-gradient(to bottom, transparent, rgba(0,240,255,0.08), transparent);
-          pointer-events: none;
-          z-index: 2;
-        }
-
-        /* ── Output console ───────────────────────────────────────────────── */
-
-        .ce-output-body {
-          flex: 1;
-          padding: 16px 18px;
-          overflow-y: auto;
-          min-height: 0;
-          font-family: var(--mono);
-          font-size: 12.5px;
-          line-height: 1.75;
-          color: rgba(74, 222, 128, 0.85);
-          white-space: pre-wrap;
-          word-break: break-all;
-          scrollbar-width: thin;
-          scrollbar-color: rgba(255,255,255,0.08) transparent;
-        }
-        .ce-output-body::-webkit-scrollbar { width: 4px; }
-        .ce-output-body::-webkit-scrollbar-track { background: transparent; }
-        .ce-output-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
-
-        .ce-output-empty {
-          color: var(--t3);
-          font-family: var(--mono);
-          font-size: 11.5px;
-          letter-spacing: 0.04em;
-          font-style: italic;
-        }
-
-        /* Prompt prefix styling */
-        .ce-output-prompt {
-          color: rgba(0,240,255,0.35);
-          font-size: 11px;
-          margin-bottom: 8px;
-          display: block;
-          letter-spacing: 0.08em;
-        }
-
-        /* Output panel when has content gets a subtle green border glow */
-        .ce-panel-output.ce-has-output {
-          border-color: rgba(74,222,128,0.12);
-          animation: outputBlink 3s ease-in-out infinite;
-        }
-
-        /* ── Action Dock ─────────────────────────────────────────────────── */
-
-        .ce-dock {
-          position: fixed;
-          bottom: 20px;
-          left: 50%;
-          transform: translateX(-50%);
-          z-index: 100;
-          display: flex;
-          align-items: center;
-          gap: 1px;
-          background: rgba(10, 10, 14, 0.88);
-          border: 1px solid var(--border2);
-          border-radius: 999px;
-          padding: 5px;
-          backdrop-filter: blur(24px);
-          box-shadow: var(--shadow-sm), 0 0 0 1px rgba(255,255,255,0.04);
-          animation: slideUp 0.5s 0.2s ease both;
-        }
-
-        /* Dock divider */
-        .ce-dock-sep {
-          width: 1px;
-          height: 22px;
-          background: var(--border);
-          margin: 0 4px;
-          flex-shrink: 0;
-        }
-
-        /* Dock label items */
-        .ce-dock-item {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          padding: 7px 14px;
-          border-radius: 999px;
-          font-family: var(--mono);
-          font-size: 10.5px;
-          color: var(--t2);
-          letter-spacing: 0.07em;
-          cursor: default;
-          transition: color 0.2s;
-        }
-        .ce-dock-item-dot {
-          width: 5px; height: 5px;
-          border-radius: 50%;
-          background: rgba(74,222,128,0.5);
-          box-shadow: 0 0 5px rgba(74,222,128,0.4);
-          flex-shrink: 0;
-        }
-
-        /* Execute button — the hero CTA */
-        .ce-execute-btn {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          padding: 9px 22px;
-          border-radius: 999px;
-          font-family: var(--mono);
-          font-size: 12px;
-          font-weight: 500;
-          letter-spacing: 0.1em;
-          color: var(--bg);
-          background: linear-gradient(135deg, rgba(0,240,255,0.95) 0%, rgba(0,200,240,0.9) 100%);
-          border: none;
-          cursor: pointer;
-          position: relative;
-          overflow: hidden;
-          transition: transform 0.15s, box-shadow 0.2s, opacity 0.2s;
-          box-shadow: 0 0 0 1px rgba(0,240,255,0.3), 0 4px 20px rgba(0,240,255,0.25);
-          animation: executeBreathe 3s ease-in-out infinite;
-        }
-        .ce-execute-btn::before {
-          content: '';
-          position: absolute;
-          inset: 0;
-          background: linear-gradient(to bottom, rgba(255,255,255,0.2), transparent);
-          pointer-events: none;
-          border-radius: inherit;
-        }
-        .ce-execute-btn:hover {
-          transform: scale(1.02);
-          box-shadow: 0 0 0 1px rgba(0,240,255,0.5), 0 6px 28px rgba(0,240,255,0.35);
-          animation: none;
-        }
-        .ce-execute-btn:active {
-          transform: scale(0.97);
-          box-shadow: 0 0 0 1px rgba(0,240,255,0.4), 0 2px 12px rgba(0,240,255,0.2);
-        }
-        .ce-execute-icon {
-          font-size: 13px;
-          line-height: 1;
-          flex-shrink: 0;
-        }
-
-        /* Dock info pills */
-        .ce-dock-pill {
-          display: flex;
-          align-items: center;
-          gap: 5px;
-          padding: 7px 12px;
-          border-radius: 999px;
-          font-family: var(--mono);
-          font-size: 10px;
-          letter-spacing: 0.08em;
-          color: var(--t3);
-          transition: color 0.2s;
-        }
-        .ce-dock-pill:hover { color: var(--t2); }
-
-        /* Autosave indicator */
-        .ce-autosave {
-          display: flex;
-          align-items: center;
-          gap: 5px;
-          font-family: var(--mono);
-          font-size: 9.5px;
-          color: rgba(74,222,128,0.4);
-          letter-spacing: 0.06em;
-        }
-        .ce-autosave-dot {
-          width: 4px; height: 4px;
-          border-radius: 50%;
-          background: rgba(74,222,128,0.5);
-        }
-
-        @media (max-width: 900px) {
-          .ce-stage { flex-direction: column; padding: 82px 12px 88px; gap: 12px; overflow-y: auto; }
-          .ce-panel-editor, .ce-panel-output { flex: none; height: 50vh; }
-          .ce-island-center, .ce-island-right { display: none; }
-        }
-      `}</style>
-
-      <div className="ce-canvas">
+      <div className="font-sans bg-core-bg bg-[radial-gradient(circle,rgba(255,255,255,0.055)_1px,transparent_1px)] bg-[size:28px_28px] min-h-screen h-screen w-screen overflow-hidden relative flex flex-col items-center">
+        {/* Ambient Depth Blobs */}
+        <div className="fixed inset-0 pointer-events-none z-0 bg-[radial-gradient(ellipse_50%_40%_at_15%_10%,rgba(0,240,255,0.04)_0%,transparent_60%),radial-gradient(ellipse_40%_35%_at_85%_90%,rgba(124,58,237,0.04)_0%,transparent_60%),radial-gradient(ellipse_30%_30%_at_50%_50%,rgba(0,0,0,0.3)_0%,transparent_70%)]" />
 
         {/* ══ DYNAMIC ISLAND ════════════════════════════════════════════════ */}
-        <div className="ce-island">
-          {/* Left — LIVE indicator */}
-          <div className="ce-island-left">
-            <span className="ce-live-dot" />
-            <span className="ce-live-text">LIVE</span>
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-0 bg-[#0a0a0e]/85 border border-white/10 rounded-full p-0 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.5),0_2px_8px_rgba(0,0,0,0.4),0_0_0_1px_rgba(255,255,255,0.04)] animate-fadeUp whitespace-nowrap overflow-hidden">
+          
+          <div className="flex items-center gap-2 py-[9px] pl-[14px] pr-4 border-r border-white/5">
+            <span className="w-[7px] h-[7px] rounded-full bg-core-green shadow-[0_0_6px_rgba(74,222,128,0.6)] animate-liveFlash shrink-0" />
+            <span className="font-mono text-[10px] font-medium text-core-green/80 tracking-[0.12em]">LIVE</span>
           </div>
 
-          {/* Center — Room ID (visual only, no logic) */}
-          <div className="ce-island-center">
-            <span className="ce-island-label">ROOM</span>
-            <span className="ce-island-id">{roomId ?? 'SESSION_ID_HERE'}</span>
+          <div className="hidden md:flex items-center gap-1.5 py-[9px] px-4 border-r border-white/5">
+            <span className="font-mono text-[10px] text-white/20 tracking-[0.08em]">ROOM</span>
+            <span className="font-mono text-[11px] text-core-cyan tracking-[0.06em] opacity-75">{roomId ?? 'SESSION_ID_HERE'}</span>
           </div>
 
-          {/* Right — Collaborators */}
-          <div className="ce-island-right">
-            <div className="ce-collab-avatars">
+          <div className="flex items-center gap-2 py-[9px] px-3.5 hidden md:flex">
+            <div className="flex items-center -gap-1">
               {croomusers && croomusers.map((user, index) => {
-                // Ye logic 1, 2, 3 color classes ko cycle karega har naye user ke liye
-                const avatarColorIndex = (index % 3) + 1;
+                const colors = [
+                  "bg-core-cyan/20 text-core-cyan",
+                  "bg-[#7c3aed]/20 text-[#c084fc]",
+                  "bg-core-green/20 text-core-green"
+                ];
+                const colorClass = colors[index % 3];
 
                 return (
-                  <div
-                    key={index}
-                    className={`ce-avatar ce-avatar-${avatarColorIndex}`}
-                    title={user}
-                  >
-                    {/* User ke naam ka pehla alphabet nikal kar Capitalize kar diya */}
+                  <div key={index} className={`w-5 h-5 rounded-full border border-black/60 flex items-center justify-center font-mono text-[8px] font-semibold -ml-[5px] first:ml-0 ${colorClass}`} title={user}>
                     {user ? user.charAt(0).toUpperCase() : '?'}
                   </div>
                 );
               })}
             </div>
-
-            {/* Dynamic Peers Count */}
-            <span className="ce-collab-count">
-              {croomusers && croomusers.length === 1
-                ? '1 Person'
-                : `${croomusers && croomusers.length} people`}
+            <span className="font-mono text-[10px] text-white/20 tracking-[0.06em]">
+              {croomusers && croomusers.length === 1 ? '1 Person' : `${croomusers?.length} people`}
             </span>
           </div>
         </div>
 
         {/* ══ MAIN STAGE ════════════════════════════════════════════════════ */}
-        <div className="ce-stage">
+        <div className="relative z-10 flex flex-col md:flex-row items-start gap-4 w-full max-w-[100vw] h-screen pt-[82px] pb-20 px-5 md:px-5 md:pb-20 overflow-y-auto md:overflow-hidden">
 
           {/* ── Editor Panel ── */}
-          <div className="ce-panel ce-panel-editor" style={{ position: 'relative' }}>
-            <div className="ce-titlebar">
-              <div className="ce-titlebar-left">
-                <div className="ce-traffic-lights">
-                  <div className="ce-dot ce-dot-r" />
-                  <div className="ce-dot ce-dot-y" />
-                  <div className="ce-dot ce-dot-g" />
+          <div className="flex flex-col bg-black/45 border border-white/5 rounded-xl overflow-hidden backdrop-blur-xl shadow-[0_32px_80px_rgba(0,0,0,0.7),0_8px_24px_rgba(0,0,0,0.5)] h-[50vh] md:h-full flex-none md:flex-[55] animate-[fadeUp_0.6s_ease_both_0.05s] transition-colors hover:border-white/10 relative">
+            <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent pointer-events-none" />
+            
+            <div className="flex items-center justify-between py-2.5 px-3.5 border-b border-white/5 bg-black/25 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="flex gap-1.5 items-center">
+                  <div className="w-2.5 h-2.5 rounded-full opacity-75 bg-[#ff5f57]" />
+                  <div className="w-2.5 h-2.5 rounded-full opacity-75 bg-[#ffbd2e]" />
+                  <div className="w-2.5 h-2.5 rounded-full opacity-75 bg-[#28c840]" />
                 </div>
-                <span className="ce-panel-title">main.js</span>
+                <span className="font-mono text-[11px] text-white/45 tracking-[0.08em]">main.js</span>
               </div>
-              <div className="ce-titlebar-right">
-                <span className="ce-lang-badge">JavaScript</span>
-                <span className="ce-status-badge">SYNCING</span>
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-[9.5px] text-core-cyan/50 bg-core-cyan/5 border border-core-cyan/10 rounded px-2 py-0.5 tracking-[0.08em]">JavaScript</span>
+                <span className="font-mono text-[9.5px] text-core-green/55 bg-core-green/5 border border-core-green/10 rounded px-2 py-0.5 tracking-[0.08em]">SYNCING</span>
               </div>
             </div>
 
-            {/* Monaco Editor — only height/width changed, all logic untouched */}
-            <div className="ce-editor-wrap">
+            <div className="flex-1 overflow-hidden relative min-h-0">
+              <div className="absolute top-0 left-0 w-[1px] h-full bg-gradient-to-b from-transparent via-core-cyan/10 to-transparent pointer-events-none z-[2]" />
               <Editor
                 height="100%"
                 width="100%"
@@ -743,45 +305,39 @@ const Codeeditor = () => {
                   minimap: { enabled: false },
                   renderLineHighlight: 'none',
                   overviewRulerBorder: false,
-                  scrollbar: {
-                    verticalScrollbarSize: 4,
-                    horizontalScrollbarSize: 4,
-                  },
+                  scrollbar: { verticalScrollbarSize: 4, horizontalScrollbarSize: 4 },
                 }}
               />
             </div>
           </div>
 
           {/* ── Output Panel ── */}
-          <div
-            className={`ce-panel ce-panel-output${cexecutedvalue ? ' ce-has-output' : ''}`}
-            style={{ position: 'relative' }}
-          >
-            <div className="ce-titlebar">
-              <div className="ce-titlebar-left">
-                <div className="ce-traffic-lights">
-                  <div className="ce-dot ce-dot-r" />
-                  <div className="ce-dot ce-dot-y" />
-                  <div className="ce-dot ce-dot-g" />
+          <div className={`flex flex-col bg-black/45 border rounded-xl overflow-hidden backdrop-blur-xl shadow-[0_32px_80px_rgba(0,0,0,0.7),0_8px_24px_rgba(0,0,0,0.5)] h-[50vh] md:h-full flex-none md:flex-[45] animate-[fadeUp_0.6s_ease_both_0.12s] transition-colors relative ${cexecutedvalue ? 'border-core-green/10 animate-[outputBlink_3s_ease-in-out_infinite]' : 'border-white/5 hover:border-white/10'}`}>
+             <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent pointer-events-none" />
+
+            <div className="flex items-center justify-between py-2.5 px-3.5 border-b border-white/5 bg-black/25 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="flex gap-1.5 items-center">
+                  <div className="w-2.5 h-2.5 rounded-full opacity-75 bg-[#ff5f57]" />
+                  <div className="w-2.5 h-2.5 rounded-full opacity-75 bg-[#ffbd2e]" />
+                  <div className="w-2.5 h-2.5 rounded-full opacity-75 bg-[#28c840]" />
                 </div>
-                <span className="ce-panel-title">OUTPUT_CONSOLE</span>
+                <span className="font-mono text-[11px] text-white/45 tracking-[0.08em]">OUTPUT_CONSOLE</span>
               </div>
-              <div className="ce-titlebar-right">
-                <span className="ce-lang-badge">node v22</span>
-                {cexecutedvalue && (
-                  <span className="ce-status-badge">DONE</span>
-                )}
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-[9.5px] text-core-cyan/50 bg-core-cyan/5 border border-core-cyan/10 rounded px-2 py-0.5 tracking-[0.08em]">node v22</span>
+                {cexecutedvalue && <span className="font-mono text-[9.5px] text-core-green/55 bg-core-green/5 border border-core-green/10 rounded px-2 py-0.5 tracking-[0.08em]">DONE</span>}
               </div>
             </div>
 
-            <div className="ce-output-body">
+            <div className="flex-1 py-4 px-4 overflow-y-auto min-h-0 font-mono text-[12.5px] leading-[1.75] text-core-green/85 whitespace-pre-wrap break-all scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10">
               {cexecutedvalue ? (
                 <>
-                  <span className="ce-output-prompt">{'>'} process.stdout</span>
+                  <span className="text-core-cyan/35 text-[11px] mb-2 block tracking-[0.08em]">{'>'} process.stdout</span>
                   {cexecutedvalue}
                 </>
               ) : (
-                <span className="ce-output-empty">
+                <span className="text-white/20 font-mono text-[11.5px] tracking-[0.04em] italic">
                   {'// Awaiting execution...\n// Press ⚡ EXECUTE to run your code.'}
                 </span>
               )}
@@ -791,31 +347,102 @@ const Codeeditor = () => {
         </div>
 
         {/* ══ ACTION DOCK ═══════════════════════════════════════════════════ */}
-        <div className="ce-dock">
-          {/* Left meta */}
-          <div className="ce-dock-pill">
-            <div className="ce-dock-item-dot" />
+        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-[1px] bg-[#0a0a0e]/90 border border-white/10 rounded-full p-[5px] backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.5),0_2px_8px_rgba(0,0,0,0.4),0_0_0_1px_rgba(255,255,255,0.04)] animate-[fadeUp_0.5s_ease_both_0.2s]">
+          <div className="flex items-center gap-1.5 py-1.5 px-3 rounded-full font-mono text-[10px] tracking-[0.08em] text-white/20 transition-colors hover:text-white/45">
+            <div className="w-[5px] h-[5px] rounded-full bg-core-green/50 shadow-[0_0_5px_rgba(74,222,128,0.4)] shrink-0" />
             WS CONNECTED
           </div>
-
-          <div className="ce-dock-sep" />
-
-          {/* Execute CTA */}
-          <button className="ce-execute-btn" onClick={handlerunbutton}>
-            <span className="ce-execute-icon">⚡</span>
-            EXECUTE
+          
+          <div className="w-[1px] h-[22px] bg-white/5 mx-1 shrink-0" />
+          
+          <button className="flex items-center gap-2 py-2 px-5 rounded-full font-mono text-xs font-medium tracking-[0.1em] text-core-bg bg-gradient-to-br from-core-cyan/95 to-[#00c8f0]/90 border-none cursor-pointer relative overflow-hidden transition-all duration-150 shadow-[0_0_0_1px_rgba(0,240,255,0.3),0_4px_20px_rgba(0,240,255,0.25)] animate-[executeBreathe_3s_ease-in-out_infinite] hover:scale-105 hover:shadow-[0_0_0_1px_rgba(0,240,255,0.5),0_6px_28px_rgba(0,240,255,0.35)] hover:animate-none active:scale-95 active:shadow-[0_0_0_1px_rgba(0,240,255,0.4),0_2px_12px_rgba(0,240,255,0.2)]" onClick={handlerunbutton}>
+            <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent pointer-events-none rounded-full" />
+            <span className="text-[13px] leading-none shrink-0">⚡</span> EXECUTE
           </button>
-
-          <div className="ce-dock-sep" />
-
-          {/* Right meta */}
-          <div className="ce-dock-pill">
-            <span className="ce-autosave">
-              <span className="ce-autosave-dot" />
+          
+          <div className="w-[1px] h-[22px] bg-white/5 mx-1 shrink-0" />
+          
+          <div className="flex items-center gap-1.5 py-1.5 px-3 rounded-full font-mono text-[10px] tracking-[0.08em] text-white/20 transition-colors hover:text-white/45">
+            <span className="flex items-center gap-1 font-mono text-[9.5px] text-core-green/40 tracking-[0.06em]">
+              <span className="w-1 h-1 rounded-full bg-core-green/50" />
               AUTOSAVE
             </span>
           </div>
         </div>
+
+        {/* ══ FLOATING CHAT WIDGET ═══════════════════════════════════════════ */}
+        {!isChatOpen ? (
+          <button 
+            className="fixed md:bottom-20 md:right-6 bottom-20 right-4 z-[200] flex items-center gap-2 py-3 px-5 rounded-full font-mono text-[11px] font-medium tracking-[0.08em] text-core-bg bg-gradient-to-br from-core-cyan/95 to-[#00c8f0]/90 border-none cursor-pointer transition-all duration-200 shadow-[0_0_0_1px_rgba(0,240,255,0.3),0_4px_20px_rgba(0,240,255,0.25)] animate-chatPulse hover:scale-105 hover:shadow-[0_0_0_1px_rgba(0,240,255,0.5),0_6px_28px_rgba(0,240,255,0.4)] hover:animate-none active:scale-95" 
+            onClick={() => setIsChatOpen(true)}
+          >
+            <span className="text-base leading-none">💬</span>
+            TEAM CHAT
+            {/* UPDATED: Only show badge if unreadCount > 0 */}
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-[18px] h-[18px] rounded-full bg-[#ff5f57] text-white text-[10px] font-semibold flex items-center justify-center shadow-[0_2px_8px_rgba(255,95,87,0.5)]">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </button>
+        ) : (
+          <div className="fixed md:bottom-20 md:right-6 bottom-20 right-4 w-[calc(100vw-32px)] md:w-[340px] max-h-[440px] z-[200] flex flex-col bg-[#0a0a0e]/95 border border-white/10 rounded-2xl backdrop-blur-xl shadow-[0_32px_80px_rgba(0,0,0,0.7),0_8px_24px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.04)] animate-chatSlideIn overflow-hidden">
+            {/* Chat Header */}
+            <div className="flex items-center justify-between py-3.5 px-4 bg-black/40 border-b border-white/5">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-[10px] bg-gradient-to-br from-core-cyan/20 to-core-cyan/5 border border-core-cyan/20 flex items-center justify-center text-sm">💬</div>
+                <div className="flex flex-col gap-0.5">
+                  <span className="font-mono text-xs font-semibold text-white/90 tracking-[0.04em]">TEAM CHAT</span>
+                  <span className="font-mono text-[10px] text-white/20 tracking-[0.06em]">
+                    {croomusers ? `${croomusers.length} online` : 'Connecting...'}
+                  </span>
+                </div>
+              </div>
+              <button 
+                className="w-7 h-7 rounded-lg bg-white/5 border border-white/5 text-white/45 text-sm cursor-pointer flex items-center justify-center transition-all hover:bg-[#ff5f57]/15 hover:border-[#ff5f57]/30 hover:text-[#ff5f57]" 
+                onClick={() => setIsChatOpen(false)}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Chat Messages */}
+            <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-2.5 min-h-[200px] max-h-[280px] scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10">
+              {messages.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full gap-2 text-white/20">
+                  <span className="text-2xl opacity-50">🗨️</span>
+                  <span className="font-mono text-[11px] tracking-[0.04em] italic">{"// No messages yet..."}</span>
+                </div>
+              ) : (
+                <>
+                  {messages.map((m, index) => {
+                    const isMe = m.startsWith('You :');
+                    return (
+                      <div 
+                        key={index} 
+                        className={`max-w-[85%] py-2.5 px-3.5 rounded-xl font-mono text-xs leading-relaxed break-words ${isMe ? 'self-end bg-gradient-to-br from-core-cyan/15 to-core-cyan/5 border border-core-cyan/25 text-core-cyan/95 rounded-br-sm' : 'self-start bg-white/5 border border-white/10 text-white/90 rounded-bl-sm'}`}
+                      >
+                        {m}
+                      </div>
+                    );
+                  })}
+                  <div ref={messagesEndRef} />
+                </>
+              )}
+            </div>
+
+            {/* Chat Input */}
+            <div className="py-3 px-3.5 bg-black/50 border-t border-white/5">
+              <input
+                ref={textref}
+                onKeyDown={handletext}
+                className="w-full bg-white/5 border border-white/10 rounded-[10px] py-2.5 px-3.5 font-mono text-xs text-white/90 outline-none transition-all focus:border-core-cyan/40 focus:bg-core-cyan/5 focus:shadow-[0_0_0_3px_rgba(0,240,255,0.08)] placeholder:text-white/20"
+                type="text"
+                placeholder="Type a message & press Enter..."
+              />
+            </div>
+          </div>
+        )}
 
       </div>
     </>
