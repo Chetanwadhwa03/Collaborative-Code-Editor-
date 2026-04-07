@@ -42,7 +42,7 @@ const Codeeditor = () => {
     async function getcontent() {
       try {
         const token = localStorage.getItem('authorization')
-        const response = await axios.get(`http://localhost:3000/api/v1/join-room/${roomId}`,
+        const response = await axios.get(`https://collaborative-code-editor-production-be05.up.railway.app/api/v1/join-room/${roomId}`,
           { headers: { authorization: token } })
 
         const fetchedcontent = response.data.content
@@ -132,7 +132,7 @@ const Codeeditor = () => {
   async function storeinDB(value: String) {
     try {
       // @ts-ignore
-      const response = await axios.post('http://localhost:3000/api/v1/save-code', {
+      const response = await axios.post('https://collaborative-code-editor-production-be05.up.railway.app/api/v1/save-code', {
         croomId: roomId,
         content: value
       })
@@ -174,7 +174,7 @@ const Codeeditor = () => {
 
       const livecode = editorref.current ? editorref.current.getValue() : content
 
-      const response = await axios.post('http://localhost:3000/api/v1/run-code', {
+      const response = await axios.post('https://collaborative-code-editor-production-be05.up.railway.app/api/v1/run-code', {
         content: livecode,
         language: "nodejs",
         versionindex: "4"
