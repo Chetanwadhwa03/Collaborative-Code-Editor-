@@ -26,7 +26,7 @@ const server = createServer(app);
 app.use(express.json());
 
 const corsoptions = {
-    origin: "https://corewire.vercel.app/"
+    origin: "https://corewire.vercel.app"
 }
 
 app.use(cors(corsoptions))
