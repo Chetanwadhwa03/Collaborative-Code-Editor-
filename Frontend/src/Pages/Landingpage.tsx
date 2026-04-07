@@ -43,9 +43,8 @@ const FEATURES = [
 ]
 
 const Landingpage = () => {
-  localStorage.removeItem('authorization')
-  localStorage.removeItem('username')
 
+  const isLoggedIn = !!localStorage.getItem('authorization');
   const [isSignup, setisSignup] = useState<boolean>(true)
   const [showSplash, setShowSplash] = useState(true)
 
@@ -111,7 +110,16 @@ const Landingpage = () => {
     } catch (e) {
       toast.dismiss()
       // @ts-ignore
-      toast.error(e.response?.data?.message || "Something went wrong!")
+      if (e.response?.status === 401 || e.response?.status === 403) {
+        localStorage.removeItem('authorization');
+        localStorage.removeItem('username');
+        toast.error("Session expired. Please log in again.");
+        navigate('/'); // Kick them back to the landing page
+      }
+      else{
+        // @ts-ignore
+        toast.error(e.response?.data?.message || "Something went wrong!")
+      }
     }
   }
 
@@ -188,63 +196,94 @@ const Landingpage = () => {
               <div className="bg-white/[0.025] border border-core-border rounded-2xl p-6 backdrop-blur-xl relative overflow-hidden">
                 <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-core-cyan/30 to-transparent" />
 
-                <div className="flex bg-black/40 border border-core-border rounded-full p-[3px] mb-6 relative">
-                  <div className="absolute top-[3px] bottom-[3px] left-[3px] w-[calc(50%-3px)] bg-gradient-to-br from-core-cyan/10 to-core-purple/10 border border-core-cyan/25 rounded-full transition-transform duration-300 ease-[cubic-bezier(0.34,1.3,0.64,1)] shadow-[0_0_16px_rgba(0,240,255,0.08)]" style={{ transform: isSignup ? "translateX(0)" : "translateX(100%)" }} />
-                  <button type="button" className="flex-1 text-center py-2 font-mono text-[11.5px] tracking-[0.06em] cursor-pointer relative z-10 transition-colors" style={{ color: isSignup ? "rgba(0,240,255,0.9)" : "rgba(255,255,255,0.28)" }} onClick={() => setisSignup(true)}>_sign_up</button>
-                  <button type="button" className="flex-1 text-center py-2 font-mono text-[11.5px] tracking-[0.06em] cursor-pointer relative z-10 transition-colors" style={{ color: !isSignup ? "rgba(0,240,255,0.9)" : "rgba(255,255,255,0.28)" }} onClick={() => setisSignup(false)}>_sign_in</button>
-                </div>
+                {isLoggedIn ? (
+                  // if the person is already logged in , means token is present in localstorage.
+                  <div className="flex flex-col items-center text-center gap-4 py-4 animate-formFadeIn">
+                    <div className="w-12 h-12 rounded-full bg-core-cyan/10 border border-core-cyan/30 flex items-center justify-center text-core-cyan mb-2 shadow-[0_0_15px_rgba(0,240,255,0.15)]">
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                    </div>
+                    <div>
+                      <h3 className="font-mono text-[14px] text-white/90 mb-1">Welcome back, <span className="text-core-cyan">{localStorage.getItem('username') || 'Developer'}</span></h3>
+                      <p className="font-sans text-[13px] text-white/40">Your secure workspace is ready.</p>
+                    </div>
 
-                <div className="relative">
-                  <div className={`flex flex-col gap-3 transition-all duration-300 ${isSignup ? "opacity-100 translate-y-0 animate-formFadeIn" : "opacity-0 translate-y-[6px] pointer-events-none absolute inset-0"}`}>
-                    <form className="flex flex-col gap-3" onSubmit={handlesignup}>
-                      <div className="flex flex-col gap-1.5">
-                        <label className="font-mono text-[10.5px] text-white/20 tracking-widest">username</label>
-                        <input name="username" className="bg-black/55 border border-white/5 rounded-lg px-3.5 py-2.5 text-white/85 font-mono text-[13px] outline-none transition-all focus:border-core-cyan/40 focus:shadow-[0_0_0_3px_rgba(0,240,255,0.07),inset_0_0_12px_rgba(0,240,255,0.02)] w-full placeholder:text-white/20" type="text" placeholder="your_handle" tabIndex={isSignup ? 0 : -1} />
-                      </div>
-                      <div className="flex flex-col gap-1.5">
-                        <label className="font-mono text-[10.5px] text-white/20 tracking-widest">email</label>
-                        <input name="email" className="bg-black/55 border border-white/5 rounded-lg px-3.5 py-2.5 text-white/85 font-mono text-[13px] outline-none transition-all focus:border-core-cyan/40 focus:shadow-[0_0_0_3px_rgba(0,240,255,0.07),inset_0_0_12px_rgba(0,240,255,0.02)] w-full placeholder:text-white/20" type="text" placeholder="you@company.io" tabIndex={isSignup ? 0 : -1} />
-                      </div>
-                      <div className="flex flex-col gap-1.5">
-                        <label className="font-mono text-[10.5px] text-white/20 tracking-widest">password</label>
-                        <input name="password" className="bg-black/55 border border-white/5 rounded-lg px-3.5 py-2.5 text-white/85 font-mono text-[13px] outline-none transition-all focus:border-core-cyan/40 focus:shadow-[0_0_0_3px_rgba(0,240,255,0.07),inset_0_0_12px_rgba(0,240,255,0.02)] w-full placeholder:text-white/20" type="password" placeholder="••••••••••••" tabIndex={isSignup ? 0 : -1} />
-                      </div>
-                      <button type="submit" className="mt-1 p-3 w-full rounded-lg border border-core-cyan/30 bg-gradient-to-br from-core-cyan/10 to-core-purple/10 text-core-cyan font-mono text-xs font-medium tracking-wider cursor-pointer relative overflow-hidden transition-all hover:shadow-[0_0_24px_rgba(0,240,255,0.18)] hover:border-core-cyan/50 active:scale-[0.985] group" tabIndex={isSignup ? 0 : -1}>
-                        <div className="absolute inset-0 bg-gradient-to-br from-core-cyan/15 to-core-purple/15 opacity-0 transition-opacity group-hover:opacity-100 pointer-events-none" />
-                        <span className="relative z-10">→ INITIALIZE ACCOUNT</span>
-                      </button>
-                    </form>
+                    <button onClick={() => navigate('/Dashboard')} className="w-full mt-2 p-3 rounded-lg border border-core-cyan/30 bg-gradient-to-br from-core-cyan/10 to-core-purple/10 text-core-cyan font-mono text-xs font-medium tracking-wider cursor-pointer relative overflow-hidden transition-all hover:shadow-[0_0_24px_rgba(0,240,255,0.18)] hover:border-core-cyan/50 active:scale-[0.985] group">
+                      <div className="absolute inset-0 bg-gradient-to-br from-core-cyan/15 to-core-purple/15 opacity-0 transition-opacity group-hover:opacity-100 pointer-events-none" />
+                      <span className="relative z-10">→ ENTER WORKSPACE</span>
+                    </button>
+
+                    <button 
+                      onClick={() => { 
+                        localStorage.removeItem('authorization'); 
+                        localStorage.removeItem('username'); 
+                        window.location.reload(); 
+                      }} 
+                      className="text-[10px] text-white/20 hover:text-white/60 underline mt-3 font-mono cursor-pointer transition-colors"
+                    >
+                      _disconnect_session
+                    </button>
                   </div>
+                ) : (
+                  // if the person is logged out
+                  <>
+                    <div className="flex bg-black/40 border border-core-border rounded-full p-[3px] mb-6 relative">
+                      <div className="absolute top-[3px] bottom-[3px] left-[3px] w-[calc(50%-3px)] bg-gradient-to-br from-core-cyan/10 to-core-purple/10 border border-core-cyan/25 rounded-full transition-transform duration-300 ease-[cubic-bezier(0.34,1.3,0.64,1)] shadow-[0_0_16px_rgba(0,240,255,0.08)]" style={{ transform: isSignup ? "translateX(0)" : "translateX(100%)" }} />
+                      <button type="button" className="flex-1 text-center py-2 font-mono text-[11.5px] tracking-[0.06em] cursor-pointer relative z-10 transition-colors" style={{ color: isSignup ? "rgba(0,240,255,0.9)" : "rgba(255,255,255,0.28)" }} onClick={() => setisSignup(true)}>_sign_up</button>
+                      <button type="button" className="flex-1 text-center py-2 font-mono text-[11.5px] tracking-[0.06em] cursor-pointer relative z-10 transition-colors" style={{ color: !isSignup ? "rgba(0,240,255,0.9)" : "rgba(255,255,255,0.28)" }} onClick={() => setisSignup(false)}>_sign_in</button>
+                    </div>
 
-                  <div className={`flex flex-col gap-3 transition-all duration-300 ${!isSignup ? "opacity-100 translate-y-0 animate-formFadeIn" : "opacity-0 translate-y-[6px] pointer-events-none absolute inset-0"}`}>
-                    <form className="flex flex-col gap-3" onSubmit={handlesignin}>
-                      <div className="flex flex-col gap-1.5">
-                        <label className="font-mono text-[10.5px] text-white/20 tracking-widest">email</label>
-                        <input name="email" className="bg-black/55 border border-white/5 rounded-lg px-3.5 py-2.5 text-white/85 font-mono text-[13px] outline-none transition-all focus:border-core-cyan/40 focus:shadow-[0_0_0_3px_rgba(0,240,255,0.07),inset_0_0_12px_rgba(0,240,255,0.02)] w-full placeholder:text-white/20" type="text" placeholder="you@company.io" tabIndex={!isSignup ? 0 : -1} />
+                    <div className="relative">
+                      <div className={`flex flex-col gap-3 transition-all duration-300 ${isSignup ? "opacity-100 translate-y-0 animate-formFadeIn" : "opacity-0 translate-y-[6px] pointer-events-none absolute inset-0"}`}>
+                        <form className="flex flex-col gap-3" onSubmit={handlesignup}>
+                          <div className="flex flex-col gap-1.5">
+                            <label className="font-mono text-[10.5px] text-white/20 tracking-widest">username</label>
+                            <input name="username" className="bg-black/55 border border-white/5 rounded-lg px-3.5 py-2.5 text-white/85 font-mono text-[13px] outline-none transition-all focus:border-core-cyan/40 focus:shadow-[0_0_0_3px_rgba(0,240,255,0.07),inset_0_0_12px_rgba(0,240,255,0.02)] w-full placeholder:text-white/20" type="text" placeholder="your_handle" tabIndex={isSignup ? 0 : -1} />
+                          </div>
+                          <div className="flex flex-col gap-1.5">
+                            <label className="font-mono text-[10.5px] text-white/20 tracking-widest">email</label>
+                            <input name="email" className="bg-black/55 border border-white/5 rounded-lg px-3.5 py-2.5 text-white/85 font-mono text-[13px] outline-none transition-all focus:border-core-cyan/40 focus:shadow-[0_0_0_3px_rgba(0,240,255,0.07),inset_0_0_12px_rgba(0,240,255,0.02)] w-full placeholder:text-white/20" type="text" placeholder="you@company.io" tabIndex={isSignup ? 0 : -1} />
+                          </div>
+                          <div className="flex flex-col gap-1.5">
+                            <label className="font-mono text-[10.5px] text-white/20 tracking-widest">password</label>
+                            <input name="password" className="bg-black/55 border border-white/5 rounded-lg px-3.5 py-2.5 text-white/85 font-mono text-[13px] outline-none transition-all focus:border-core-cyan/40 focus:shadow-[0_0_0_3px_rgba(0,240,255,0.07),inset_0_0_12px_rgba(0,240,255,0.02)] w-full placeholder:text-white/20" type="password" placeholder="••••••••••••" tabIndex={isSignup ? 0 : -1} />
+                          </div>
+                          <button type="submit" className="mt-1 p-3 w-full rounded-lg border border-core-cyan/30 bg-gradient-to-br from-core-cyan/10 to-core-purple/10 text-core-cyan font-mono text-xs font-medium tracking-wider cursor-pointer relative overflow-hidden transition-all hover:shadow-[0_0_24px_rgba(0,240,255,0.18)] hover:border-core-cyan/50 active:scale-[0.985] group" tabIndex={isSignup ? 0 : -1}>
+                            <div className="absolute inset-0 bg-gradient-to-br from-core-cyan/15 to-core-purple/15 opacity-0 transition-opacity group-hover:opacity-100 pointer-events-none" />
+                            <span className="relative z-10">→ INITIALIZE ACCOUNT</span>
+                          </button>
+                        </form>
                       </div>
-                      <div className="flex flex-col gap-1.5">
-                        <label className="font-mono text-[10.5px] text-white/20 tracking-widest">password</label>
-                        <input name="password" className="bg-black/55 border border-white/5 rounded-lg px-3.5 py-2.5 text-white/85 font-mono text-[13px] outline-none transition-all focus:border-core-cyan/40 focus:shadow-[0_0_0_3px_rgba(0,240,255,0.07),inset_0_0_12px_rgba(0,240,255,0.02)] w-full placeholder:text-white/20" type="password" placeholder="••••••••••••" tabIndex={!isSignup ? 0 : -1} />
+
+                      <div className={`flex flex-col gap-3 transition-all duration-300 ${!isSignup ? "opacity-100 translate-y-0 animate-formFadeIn" : "opacity-0 translate-y-[6px] pointer-events-none absolute inset-0"}`}>
+                        <form className="flex flex-col gap-3" onSubmit={handlesignin}>
+                          <div className="flex flex-col gap-1.5">
+                            <label className="font-mono text-[10.5px] text-white/20 tracking-widest">email</label>
+                            <input name="email" className="bg-black/55 border border-white/5 rounded-lg px-3.5 py-2.5 text-white/85 font-mono text-[13px] outline-none transition-all focus:border-core-cyan/40 focus:shadow-[0_0_0_3px_rgba(0,240,255,0.07),inset_0_0_12px_rgba(0,240,255,0.02)] w-full placeholder:text-white/20" type="text" placeholder="you@company.io" tabIndex={!isSignup ? 0 : -1} />
+                          </div>
+                          <div className="flex flex-col gap-1.5">
+                            <label className="font-mono text-[10.5px] text-white/20 tracking-widest">password</label>
+                            <input name="password" className="bg-black/55 border border-white/5 rounded-lg px-3.5 py-2.5 text-white/85 font-mono text-[13px] outline-none transition-all focus:border-core-cyan/40 focus:shadow-[0_0_0_3px_rgba(0,240,255,0.07),inset_0_0_12px_rgba(0,240,255,0.02)] w-full placeholder:text-white/20" type="password" placeholder="••••••••••••" tabIndex={!isSignup ? 0 : -1} />
+                          </div>
+                          <button type="submit" className="mt-1 p-3 w-full rounded-lg border border-core-cyan/30 bg-gradient-to-br from-core-cyan/10 to-core-purple/10 text-core-cyan font-mono text-xs font-medium tracking-wider cursor-pointer relative overflow-hidden transition-all hover:shadow-[0_0_24px_rgba(0,240,255,0.18)] hover:border-core-cyan/50 active:scale-[0.985] group" tabIndex={!isSignup ? 0 : -1}>
+                            <div className="absolute inset-0 bg-gradient-to-br from-core-cyan/15 to-core-purple/15 opacity-0 transition-opacity group-hover:opacity-100 pointer-events-none" />
+                            <span className="relative z-10">→ AUTHENTICATE</span>
+                          </button>
+                        </form>
                       </div>
-                      <button type="submit" className="mt-1 p-3 w-full rounded-lg border border-core-cyan/30 bg-gradient-to-br from-core-cyan/10 to-core-purple/10 text-core-cyan font-mono text-xs font-medium tracking-wider cursor-pointer relative overflow-hidden transition-all hover:shadow-[0_0_24px_rgba(0,240,255,0.18)] hover:border-core-cyan/50 active:scale-[0.985] group" tabIndex={!isSignup ? 0 : -1}>
-                        <div className="absolute inset-0 bg-gradient-to-br from-core-cyan/15 to-core-purple/15 opacity-0 transition-opacity group-hover:opacity-100 pointer-events-none" />
-                        <span className="relative z-10">→ AUTHENTICATE</span>
+                    </div>
+
+                    <div className="text-center mt-5 font-mono text-[11px] text-white/20">
+                      {isSignup ? "// already deployed?" : "// new to codelink?"}{" "}
+                      <button type="button" className="text-core-cyan/50 hover:text-core-cyan underline underline-offset-4 transition-colors" onClick={() => setisSignup(!isSignup)}>
+                        {isSignup ? "sign_in()" : "sign_up()"}
                       </button>
-                    </form>
-                  </div>
-                </div>
-
-                <div className="text-center mt-5 font-mono text-[11px] text-white/20">
-                  {isSignup ? "// already deployed?" : "// new to codelink?"}{" "}
-                  <button type="button" className="text-core-cyan/50 hover:text-core-cyan underline underline-offset-4 transition-colors" onClick={() => setisSignup(!isSignup)}>
-                    {isSignup ? "sign_in()" : "sign_up()"}
-                  </button>
-                </div>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
 
-          {/* RIGHT — IDE demo */}
           {/* RIGHT — IDE demo */}
           <div className="w-full md:w-1/2 flex flex-col justify-center items-center py-10 px-6 md:px-12 relative overflow-hidden bg-core-panel">
             <div className="absolute left-0 right-0 h-[120px] bg-gradient-to-b from-transparent via-core-cyan/5 to-transparent animate-scanDown pointer-events-none z-0" />

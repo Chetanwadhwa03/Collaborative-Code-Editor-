@@ -125,8 +125,8 @@ app.post('/api/v1/signin', async (req, res) => {
         const secretkey: string = process.env.JWT_SECRET_KEY
 
         const token = jwt.sign({
-            email
-        }, secretkey)
+            email,
+        }, secretkey, {expiresIn:'24h'})
 
         return res.status(200).json({
             message: 'User Signed in Successfully !!',
