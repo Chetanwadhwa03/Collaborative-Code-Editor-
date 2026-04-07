@@ -14,7 +14,7 @@ import Auth from './Middleware/Auth.js';
 const app = express();
 app.use(express.json());
 const corsoptions = {
-    origin: "http://localhost:5173"
+    origin: "https://corewire.vercel.app"
 };
 app.use(cors(corsoptions));
 dotenv.config();
