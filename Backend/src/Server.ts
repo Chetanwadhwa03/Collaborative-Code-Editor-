@@ -113,10 +113,10 @@ app.post('/api/v1/signin', async (req, res) => {
 
         const username = curruser.name
         const hashedpassword = curruser.password
-        const result = bcrypt.compare(hashedpassword, password)
+        const result = await bcrypt.compare(password,hashedpassword)
 
         if (!result) {
-            return res.status(403).json({
+            return res.status(400).json({
                 message: 'Password is incorrect !!'
             })
         }

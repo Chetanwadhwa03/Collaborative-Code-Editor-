@@ -313,7 +313,7 @@ const Landingpage = () => {
                 </div>
               </div>
 
-              <div className="pt-[36px] bg-[#09090b]">
+              <div className="pt-[36px] bg-[#09090b] transform perspective-[2000px] rotate-y-[-12deg] rotate-x-[8deg] shadow-[-20px_20px_40px_rgba(0,0,0,0.5)] transition-all duration-700 hover:rotate-y-0 hover:rotate-x-0">
                 <video
                   src="/demo.mp4"
                   autoPlay
