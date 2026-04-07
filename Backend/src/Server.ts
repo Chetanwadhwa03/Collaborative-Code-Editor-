@@ -25,7 +25,8 @@ const corsoptions = {
 app.use(cors(corsoptions))
 dotenv.config()
 
-mongoose.connect("mongodb+srv://lovewadhwa03_db_user:password12345@todoapp.zhg1uey.mongodb.net/collab-code-editor")
+// @ts-ignore
+mongoose.connect(process.env.MONGODB_URI)
 
 
 
@@ -67,10 +68,11 @@ app.post('/api/v1/signup', async (req, res) => {
             console.log('User has signed up !! ')
         }
         else {
+            const {fieldErrors, formErrors} = z.flattenError(result.error);
             res.status(411).json({
-                message: 'Input Validation failed'
+                message:fieldErrors,
+                general:formErrors
             })
-            console.log('Input validation failed')
         }
     }
     catch (e) {

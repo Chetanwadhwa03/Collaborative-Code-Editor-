@@ -3,104 +3,11 @@ import { useState, useEffect, useRef } from "react"
 import { useNavigate } from "react-router-dom"
 import { toast } from 'react-toastify'
 
-// ─── Terminal animation data ───────────────────────────────────────────────────
-const BOOT_SEQUENCE = [
-  { text: "CODELINK RUNTIME v3.1.0", type: "header", delay: 0 },
-  { text: "──────────────────────────────────────", type: "divider", delay: 120 },
-  { text: "► Mounting distributed file system...", type: "cmd", delay: 350 },
-  { text: "  ✓ ext4 @ /workspace [mounted]", type: "ok", delay: 700 },
-  { text: "► Resolving peer topology...", type: "cmd", delay: 1050 },
-  { text: "  ✓ 6 nodes discovered (RTT avg 12ms)", type: "ok", delay: 1400 },
-  { text: "► Spawning WebSocket relay...", type: "cmd", delay: 1750 },
-  { text: "  ✓ wss://relay.codelink.io:443 [OPEN]", type: "ok", delay: 2100 },
-  { text: "► Compiling hot-reload daemon...", type: "cmd", delay: 2450 },
-  { text: "  ✓ esbuild 0.21.3 — 847μs", type: "ok", delay: 2800 },
-  { text: "► Establishing E2E encryption...", type: "cmd", delay: 3150 },
-  { text: "  ✓ ChaCha20-Poly1305 handshake complete", type: "ok", delay: 3500 },
-  { text: "──────────────────────────────────────", type: "divider", delay: 3750 },
-  { text: "  SESSION READY · 6 collaborators live", type: "ready", delay: 3950 },
-]
-
-const CODE_LINES = [
-  { ln: "1", tokens: [{ t: "keyword", v: "import" }, { t: "plain", v: " { " }, { t: "ident", v: "Runtime" }, { t: "plain", v: ", " }, { t: "ident", v: "Peer" }, { t: "plain", v: " } " }, { t: "keyword", v: "from" }, { t: "string", v: " '@codelink/core'" }] },
-  { ln: "2", tokens: [{ t: "keyword", v: "import" }, { t: "plain", v: " { " }, { t: "ident", v: "sync" }, { t: "plain", v: " } " }, { t: "keyword", v: "from" }, { t: "string", v: " '@codelink/crdt'" }] },
-  { ln: "3", tokens: [{ t: "plain", v: "" }] },
-  { ln: "4", tokens: [{ t: "comment", v: "// Initialize collaborative session" }] },
-  { ln: "5", tokens: [{ t: "keyword", v: "const" }, { t: "plain", v: " " }, { t: "ident", v: "session" }, { t: "plain", v: " = " }, { t: "keyword", v: "await" }, { t: "plain", v: " " }, { t: "ident", v: "Runtime" }, { t: "plain", v: "." }, { t: "fn", v: "init" }, { t: "plain", v: "({" }] },
-  { ln: "6", tokens: [{ t: "plain", v: "  " }, { t: "prop", v: "engine" }, { t: "plain", v: ": " }, { t: "string", v: "'v8-turbo'" }, { t: "plain", v: "," }] },
-  { ln: "7", tokens: [{ t: "plain", v: "  " }, { t: "prop", v: "peers" }, { t: "plain", v: ": " }, { t: "number", v: "6" }, { t: "plain", v: "," }] },
-  { ln: "8", tokens: [{ t: "plain", v: "  " }, { t: "prop", v: "encrypted" }, { t: "plain", v: ": " }, { t: "bool", v: "true" }, { t: "plain", v: "," }] },
-  { ln: "9", tokens: [{ t: "plain", v: "})" }] },
-  { ln: "10", tokens: [{ t: "plain", v: "" }] },
-  { ln: "11", tokens: [{ t: "ident", v: "session" }, { t: "plain", v: "." }, { t: "fn", v: "on" }, { t: "plain", v: "(" }, { t: "string", v: "'delta'" }, { t: "plain", v: ", " }, { t: "ident", v: "sync" }, { t: "plain", v: "." }, { t: "fn", v: "apply" }, { t: "plain", v: ")" }] },
-]
-
-const TOKEN_COLORS: Record<string, string> = {
-  keyword: "#c792ea", ident: "#82aaff", string: "#c3e88d",
-  fn: "#82aaff", prop: "#f78c6c", number: "#f78c6c",
-  bool: "#ff5874", comment: "#546e7a", plain: "#a6accd",
-}
-
-function CodeToken({ t, v }: { t: string; v: string }) {
-  return <span style={{ color: TOKEN_COLORS[t] ?? TOKEN_COLORS.plain }}>{v}</span>
-}
-
-function TerminalOutput() {
-  const [visible, setVisible] = useState(0)
-  const scrollContainerRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (visible >= BOOT_SEQUENCE.length) return
-    const delay = visible === 0 ? 0 : BOOT_SEQUENCE[visible].delay - BOOT_SEQUENCE[visible - 1].delay
-    const timer = setTimeout(() => setVisible(v => v + 1), delay)
-    return () => clearTimeout(timer)
-  }, [visible])
-
-  useEffect(() => {
-    const el = scrollContainerRef.current
-    if (el) el.scrollTop = el.scrollHeight
-  }, [visible])
-
-  const lineColor = (type: string) => {
-    if (type === "ok") return "#4ade80"
-    if (type === "ready") return "#00f0ff"
-    if (type === "header") return "#e2e8f0"
-    if (type === "divider") return "#1e293b"
-    return "#64748b"
-  }
-
-  return (
-    <div
-      ref={scrollContainerRef}
-      className="h-[160px] overflow-y-auto flex flex-col gap-[1px] scrollbar-hide"
-      style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-    >
-      {BOOT_SEQUENCE.slice(0, visible).map((line, i) => (
-        <div
-          key={i}
-          className="font-mono text-[11.5px] leading-[1.8] tracking-[0.01em] animate-termLine shrink-0"
-          style={{
-            color: lineColor(line.type),
-            fontWeight: line.type === "header" || line.type === "ready" ? 600 : 400,
-          }}
-        >
-          {line.text}
-        </div>
-      ))}
-      {visible >= BOOT_SEQUENCE.length && (
-        <div className="flex items-center gap-[6px] mt-[6px] shrink-0">
-          <span className="text-[#4ade80] font-mono text-[12px]">$</span>
-          <span className="inline-block w-[7px] h-[13px] bg-core-cyan rounded-[1px] align-middle animate-blink" />
-        </div>
-      )}
-    </div>
-  )
-}
 
 function useScrollReveal(threshold = 0.12) {
   const ref = useRef<HTMLElement>(null)
   const [revealed, setRevealed] = useState(false)
-  
+
   useEffect(() => {
     const el = ref.current
     if (!el) return
@@ -138,7 +45,7 @@ const FEATURES = [
 const Landingpage = () => {
   localStorage.removeItem('authorization')
   localStorage.removeItem('username')
-  
+
   const [isSignup, setisSignup] = useState<boolean>(true)
   const [showSplash, setShowSplash] = useState(true)
 
@@ -156,7 +63,7 @@ const Landingpage = () => {
 
   const scrollToTop = () => window.scrollTo({ top: 0, behavior: "smooth" })
 
- 
+
   // @ts-ignore
   async function handlesignup(e) {
     e.preventDefault()
@@ -164,11 +71,29 @@ const Landingpage = () => {
     const content = Object.fromEntries(formdata)
     try {
       const response = await axios.post('http://localhost:3000/api/v1/signup', content)
+      toast.dismiss()
       toast.success(response.data.message)
       setisSignup(false)
     } catch (e) {
       // @ts-ignore
-      toast.error(e.response?.data?.message || "Something went wrong!")
+      const errors = e.response?.data?.message
+
+      toast.dismiss()
+      if (typeof errors === 'object' && errors !== null && !Array.isArray(errors)) {
+        // this error is specifically because of zod validation of the input
+        Object.entries(errors).forEach(([fieldName, messages]) => {
+          if (Array.isArray(messages) && messages.length > 0) {
+            const beautifulfieldName = fieldName.charAt(0).toUpperCase() + fieldName.slice(1);
+            toast.error(`${beautifulfieldName} : ${messages[0]}`)
+          }
+        })
+      }
+      else if (typeof errors === 'string') {
+        toast.error(errors);
+      }
+      else {
+        toast.error("Something Went wrong!")
+      }
     }
   }
 
@@ -184,6 +109,7 @@ const Landingpage = () => {
       toast.success(response.data.message)
       navigate('/Dashboard')
     } catch (e) {
+      toast.dismiss()
       // @ts-ignore
       toast.error(e.response?.data?.message || "Something went wrong!")
     }
@@ -205,6 +131,7 @@ const Landingpage = () => {
         .Toastify__toast-body { padding: 0 !important; margin: 0 !important; gap: 8px !important; }
         .Toastify__progress-bar--success { background: #4ade80 !important; height: 1px !important; }
         .Toastify__progress-bar--error   { background: #ff5f5f !important; height: 1px !important; }
+
       `}</style>
 
       {/* Splash Screen */}
@@ -233,7 +160,7 @@ const Landingpage = () => {
       </nav>
 
       <div className="font-sans bg-core-bg min-h-screen flex flex-col pt-[54px]" ref={pageTopRef}>
-        
+
         {/* Hero Section */}
         <div className="flex flex-col md:flex-row min-h-[calc(100vh-54px)]">
           {/* Left Hero */}
@@ -260,7 +187,7 @@ const Landingpage = () => {
               {/* Auth Card */}
               <div className="bg-white/[0.025] border border-core-border rounded-2xl p-6 backdrop-blur-xl relative overflow-hidden">
                 <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-core-cyan/30 to-transparent" />
-                
+
                 <div className="flex bg-black/40 border border-core-border rounded-full p-[3px] mb-6 relative">
                   <div className="absolute top-[3px] bottom-[3px] left-[3px] w-[calc(50%-3px)] bg-gradient-to-br from-core-cyan/10 to-core-purple/10 border border-core-cyan/25 rounded-full transition-transform duration-300 ease-[cubic-bezier(0.34,1.3,0.64,1)] shadow-[0_0_16px_rgba(0,240,255,0.08)]" style={{ transform: isSignup ? "translateX(0)" : "translateX(100%)" }} />
                   <button type="button" className="flex-1 text-center py-2 font-mono text-[11.5px] tracking-[0.06em] cursor-pointer relative z-10 transition-colors" style={{ color: isSignup ? "rgba(0,240,255,0.9)" : "rgba(255,255,255,0.28)" }} onClick={() => setisSignup(true)}>_sign_up</button>
@@ -318,60 +245,82 @@ const Landingpage = () => {
           </div>
 
           {/* RIGHT — IDE demo */}
+          {/* RIGHT — IDE demo */}
           <div className="w-full md:w-1/2 flex flex-col justify-center items-center py-10 px-6 md:px-12 relative overflow-hidden bg-core-panel">
             <div className="absolute left-0 right-0 h-[120px] bg-gradient-to-b from-transparent via-core-cyan/5 to-transparent animate-scanDown pointer-events-none z-0" />
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_60%_at_70%_40%,rgba(168,85,247,0.05)_0%,transparent_70%)] pointer-events-none" />
-            
-            <div className="relative z-10 w-full max-w-[560px] rounded-2xl overflow-hidden border border-white/5 shadow-[0_0_0_1px_rgba(0,240,255,0.04),0_40px_100px_rgba(0,0,0,0.7),0_0_80px_rgba(0,240,255,0.03)] animate-[fadeUp_0.8s_0.15s_ease_both]">
-              <div className="flex items-center justify-between px-4 py-3 bg-white/5 border-b border-white/5">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-[#ff5f57] shadow-[inset_0_-1px_2px_rgba(0,0,0,0.3)]" />
-                  <div className="w-3 h-3 rounded-full bg-[#ffbd2e] shadow-[inset_0_-1px_2px_rgba(0,0,0,0.3)]" />
-                  <div className="w-3 h-3 rounded-full bg-[#28c840] shadow-[inset_0_-1px_2px_rgba(0,0,0,0.3)]" />
+
+            {/* ── TOP DECORATION: Routing Line ── */}
+            <div className="flex items-center gap-4 mb-6 w-full max-w-[640px] opacity-70 relative z-10 animate-fadeUp">
+              <div className="flex-1 h-[1px] bg-gradient-to-r from-transparent to-core-cyan/30" />
+              <span className="font-mono text-[9px] text-core-cyan tracking-[0.25em]">LIVE_WORKSPACE_PREVIEW</span>
+              <div className="flex-1 h-[1px] bg-gradient-to-l from-transparent to-core-cyan/30" />
+            </div>
+
+            {/* ── FLOATING VIDEO PLAYER ── */}
+            <div className="relative z-10 w-full max-w-[640px] rounded-xl overflow-hidden border border-white/10 shadow-[0_0_0_1px_rgba(0,240,255,0.15),0_30px_80px_rgba(0,0,0,0.8),0_0_60px_rgba(0,240,255,0.08)] animate-[fadeUp_0.8s_0.15s_ease_both,float_6s_ease-in-out_infinite_0.8s] group">
+
+              <div className="absolute inset-0 bg-gradient-to-br from-core-cyan/20 to-core-purple/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 mix-blend-overlay pointer-events-none z-20" />
+
+              <div className="flex items-center px-4 py-3 bg-black/90 border-b border-white/10 absolute top-0 left-0 right-0 z-30 backdrop-blur-md">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-[#ff5f57] shadow-[inset_0_-1px_2px_rgba(0,0,0,0.3)]" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-[#ffbd2e] shadow-[inset_0_-1px_2px_rgba(0,0,0,0.3)]" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-[#28c840] shadow-[inset_0_-1px_2px_rgba(0,0,0,0.3)]" />
                 </div>
-                <span className="font-mono text-[11px] text-white/20">session.ts — codelink/runtime</span>
-                <div className="flex items-center gap-1.5 font-mono text-[10px] text-[#4ade80]/70">
-                  <div className="w-[5px] h-[5px] rounded-full bg-[#4ade80] shadow-[0_0_5px_#4ade80] animate-liveFlashFast" />LIVE
+                <div className="mx-auto font-mono text-[10px] text-white/30 tracking-widest flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#4ade80] animate-liveFlashFast" />
+                  wss://relay.corewire.io
                 </div>
               </div>
 
-              <div className="flex bg-black/30 border-b border-white/5">
-                <div className="px-4 py-2 font-mono text-[11px] text-core-cyan/70 border-b border-core-cyan/40 bg-core-cyan/5">session.ts</div>
-                <div className="px-4 py-2 font-mono text-[11px] text-white/20">sync.ts</div>
-                <div className="px-4 py-2 font-mono text-[11px] text-white/20">relay.ts</div>
+              <div className="pt-[36px] bg-[#09090b]">
+                <video
+                  src="/demo.mp4"
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="w-full h-auto object-cover opacity-95 group-hover:opacity-100 transition-opacity duration-500 scale-[1.01]"
+                />
               </div>
+            </div>
 
-              <div className="flex bg-black/50 min-h-[200px]">
-                <div className="flex flex-col py-4 px-3 bg-black/25 border-r border-white/5 min-w-[44px] select-none">
-                  {CODE_LINES.map(l => (<span key={l.ln} className="font-mono text-[11.5px] leading-[1.75] text-white/10 text-right">{l.ln}</span>))}
-                  <span className="font-mono text-[11.5px] leading-[1.75] text-core-cyan/25 text-right">12</span>
-                </div>
-                <div className="py-4 px-5 overflow-x-auto flex-1">
-                  {CODE_LINES.map((line, i) => (
-                    <div key={i} className="font-mono text-[12.5px] leading-[1.75] whitespace-nowrap animate-fadeUpFast" style={{ animationDelay: `${i * 60}ms` }}>
-                      {line.tokens.map((tok, j) => (<CodeToken key={j} t={tok.t} v={tok.v} />))}
-                    </div>
-                  ))}
-                  <div className="font-mono text-[12.5px] leading-[1.75] whitespace-nowrap animate-fadeUpFast" style={{ animationDelay: `${CODE_LINES.length * 60}ms` }}>
-                    <span className="inline-block w-[7px] h-[14px] bg-core-cyan/70 rounded-[1px] align-middle animate-blink" />
+            {/* ── BOTTOM DECORATION: Activity Stream & Peers ── */}
+            <div className="w-full max-w-[640px] mt-6 relative z-10 animate-[fadeUp_0.8s_0.3s_ease_both]">
+
+              {/* Fake Activity Terminal */}
+              <div className="bg-black/40 border border-white/5 rounded-xl p-4 backdrop-blur-sm mb-4">
+                <div className="font-mono text-[9px] text-white/30 mb-3 tracking-[0.2em] border-b border-white/5 pb-2">NETWORK_ACTIVITY_LOG</div>
+                <div className="flex flex-col gap-2.5 font-mono text-[10.5px]">
+                  <div className="flex items-center gap-3 text-white/40">
+                    <span className="text-[#4ade80]">✓</span>
+                    <span>[sync] Delta applied from @peer_7</span>
+                    <span className="ml-auto text-white/20">just now</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-white/40">
+                    <span className="text-[#4ade80]">✓</span>
+                    <span>[exec] Code compiled successfully</span>
+                    <span className="ml-auto text-white/20">2s ago</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-core-cyan/70">
+                    <span className="animate-pulse">⟳</span>
+                    <span>[ws] Awaiting incoming events...</span>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-black/65 border-t border-white/5 pt-3.5 pb-4 px-5">
-                <div className="font-mono text-[10px] text-white/20 tracking-widest mb-2.5 border-b border-white/5 pb-2">TERMINAL — zsh · node v22.0.0</div>
-                <TerminalOutput />
+              {/* Collaborators Row */}
+              <div className="flex justify-between items-center bg-white/[0.02] border border-white/5 rounded-xl px-4 py-3">
+                <span className="font-mono text-[10px] text-white/30 tracking-widest uppercase">Active Node Topology:</span>
+                <div className="flex gap-2 items-center">
+                  {["AK", "SR", "JL", "DM"].map(p => (
+                    <div key={p} className="w-6 h-6 rounded-full border border-core-cyan/20 flex items-center justify-center font-mono text-[9px] text-core-cyan/70 bg-core-cyan/5 shadow-[0_0_8px_rgba(0,240,255,0.1)]">{p}</div>
+                  ))}
+                  <div className="w-6 h-6 rounded-full border border-white/10 flex items-center justify-center font-mono text-[9px] text-white/40 bg-white/5">+2</div>
+                </div>
               </div>
 
-              <div className="flex justify-between items-center px-4 py-1.5 bg-core-cyan/5 border-t border-core-cyan/10">
-                <div className="font-mono text-[10.5px] text-core-cyan/45 tracking-wider flex items-center gap-4"><span>TypeScript</span><span>UTF-8</span><span>Ln 12, Col 1</span></div>
-                <div className="font-mono text-[10.5px] text-core-cyan/45 tracking-wider flex items-center gap-4"><span>Git: main ✓</span><span>6 peers</span></div>
-              </div>
-            </div>
-
-            <div className="flex mt-5 gap-2.5 items-center">
-              <span className="font-mono text-[11px] text-white/20">collaborating:</span>
-              {["AK", "SR", "JL", "DM", "RB", "+2"].map(p => (<div key={p} className="w-7 h-7 rounded-full border border-core-cyan/20 flex items-center justify-center font-mono text-[10px] text-core-cyan/60 bg-core-cyan/5">{p}</div>))}
             </div>
           </div>
         </div>
@@ -379,7 +328,7 @@ const Landingpage = () => {
         {/* Features Section */}
         <section id="features" ref={featuresReveal.ref} className={`bg-core-bg border-t border-core-border py-24 px-5 md:px-12 relative overflow-hidden transition-opacity duration-500 ${featuresReveal.revealed ? 'opacity-100 animate-revealZoom' : 'opacity-0'}`}>
           <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_60%_50%_at_30%_20%,rgba(0,240,255,0.03)_0%,transparent_60%),radial-gradient(ellipse_50%_40%_at_70%_80%,rgba(168,85,247,0.03)_0%,transparent_60%)]" />
-          
+
           <div className="text-center mb-16 relative z-10">
             <div className="font-mono text-[11px] tracking-[0.2em] text-core-cyan mb-4 drop-shadow-[0_0_20px_rgba(0,240,255,0.5)]">{'>'} CORE CAPABILITIES</div>
             <h2 className="text-[clamp(28px,4vw,40px)] font-extrabold tracking-tight text-white/90 mb-4">Built for Real-Time Collaboration</h2>
@@ -402,14 +351,14 @@ const Landingpage = () => {
         {/* Creator Section */}
         <section id="creator" ref={creatorReveal.ref} className={`bg-core-bg border-t border-core-border py-24 px-5 md:px-12 relative overflow-hidden transition-opacity duration-500 ${creatorReveal.revealed ? 'opacity-100 animate-revealZoom' : 'opacity-0'}`}>
           <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_70%_60%_at_50%_50%,rgba(0,240,255,0.05)_0%,transparent_65%),radial-gradient(ellipse_40%_45%_at_75%_30%,rgba(168,85,247,0.04)_0%,transparent_60%),radial-gradient(ellipse_35%_40%_at_25%_70%,rgba(0,240,255,0.03)_0%,transparent_60%)]" />
-          
+
           <div className="text-center mb-16 relative z-10">
             <div className="font-mono text-[13px] tracking-[0.25em] text-core-cyan mb-4 drop-shadow-[0_0_30px_rgba(0,240,255,0.6),0_0_60px_rgba(0,240,255,0.3)] animate-glowPulse">{'>'} MEET THE CREATOR</div>
           </div>
 
           <div className="max-w-[1100px] mx-auto relative z-10">
             <div className="flex flex-col lg:grid lg:grid-cols-[320px_1fr] gap-10 lg:gap-16 bg-black/50 border border-white/10 rounded-[24px] p-8 md:p-12 backdrop-blur-xl shadow-[0_0_0_1px_rgba(0,240,255,0.05),0_60px_120px_rgba(0,0,0,0.6),0_0_100px_rgba(0,240,255,0.04),inset_0_1px_0_rgba(255,255,255,0.05)]">
-              
+
               <div className="flex flex-col md:flex-row lg:flex-col items-center justify-center gap-6 md:gap-8 lg:gap-6">
                 <div className="w-[140px] h-[140px] md:w-[160px] md:h-[160px] lg:w-[220px] lg:h-[220px] rounded-3xl p-1 bg-gradient-to-br from-core-cyan/60 via-core-purple/50 to-core-cyan/60 shadow-[0_0_40px_rgba(0,240,255,0.25),0_0_80px_rgba(0,240,255,0.1),0_0_120px_rgba(168,85,247,0.1)] animate-glowPulse">
                   <div className="w-full h-full rounded-[20px] overflow-hidden bg-core-cyan/5 border-[3px] border-core-bg flex items-center justify-center">

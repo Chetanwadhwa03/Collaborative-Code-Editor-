@@ -29,6 +29,7 @@ const Dashboard = () => {
       }
     } catch (e) {
       setbVisible(true)
+      toast.dismiss()
       // @ts-ignore
       toast.error(e.response?.data?.message || "Something went wrong!");
     }
@@ -49,6 +50,12 @@ const Dashboard = () => {
       toast.error(e.response?.data?.message || "Something went wrong!");
       // for now i have hardcoded the message, otherwise we have to pick it up from the server.
     }
+  }
+
+  const handlelogoutclick = ()=>{
+    localStorage.removeItem('authorization');
+    localStorage.removeItem('username');
+    navigate('/')
   }
 
   // ────────────────────────────────────────────────────────────────────────────
@@ -715,7 +722,7 @@ const Dashboard = () => {
             </div>
             <button
               className="op-logout"
-              onClick={() => console.log('Logout clicked')}
+              onClick={handlelogoutclick}
             >
               <svg className="op-logout-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />

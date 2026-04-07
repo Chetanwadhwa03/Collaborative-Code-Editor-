@@ -41,6 +41,10 @@
   --animate-chatPulse: chatPulse 3s ease-in-out infinite;
   --animate-chatSlideIn: chatSlideIn 0.3s ease both;
   --animate-chatSlideOut: chatSlideOut 0.25s ease forwards;
+  --animate-letterReveal: letterReveal 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  --animate-float:float 6s ease-in-out infinite;
+        
+
 
   /* 3. Custom Keyframes */
   @keyframes blink {
@@ -113,9 +117,14 @@
     to { opacity: 0; transform: translateY(20px) scale(0.95); }
   }
 
-
-
-
-
+  @keyframes letterReveal {
+    0% { opacity: 0; transform: translateY(20px); filter: blur(8px); }
+    100% { opacity: 1; transform: translateY(0); filter: blur(0); }
+  }
+  @keyframes float {
+    0% { transform: translateY(0px); }
+    50% { transform: translateY(-12px); }
+    100% { transform: translateY(0px); }
+  }
 
 }

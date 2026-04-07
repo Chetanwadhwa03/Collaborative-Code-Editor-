@@ -93,7 +93,14 @@ const Codeeditor = () => {
         }
       }
       else if (parseddata.type === 'code') {
-        setcurrcontent(parseddata.payload.content)
+        const recentlyarrivedcontent = parseddata.payload.content
+        // If the content is different.
+        if(editorref.current.getValue() !== recentlyarrivedcontent){
+          editorref.current.setValue(recentlyarrivedcontent);
+        }
+        else{
+          
+        }
       }
       else if (parseddata.type === 'room_users') {
         const croomunames = parseddata.userspresent
@@ -141,10 +148,6 @@ const Codeeditor = () => {
   // to handle the code that is being written from my side.
   // @ts-ignore
   const handlemytype = (value: string | undefined, event) => {
-    if (value !== undefined) {
-      setcurrcontent(value)
-    }
-
     if (currclock.current) {
       clearTimeout(currclock.current)
     }
@@ -169,8 +172,10 @@ const Codeeditor = () => {
     try {
       const token = localStorage.getItem('authorization')
 
+      const livecode = editorref.current ? editorref.current.getValue() : content
+
       const response = await axios.post('http://localhost:3000/api/v1/run-code', {
-        content: content,
+        content: livecode,
         language: "nodejs",
         versionindex: "4"
       },
@@ -226,6 +231,11 @@ const Codeeditor = () => {
         websocket.send(JSON.stringify(data))
       }
     }
+  }
+
+  const editorref = useRef<any>(null)
+  const handleEditorDidMount = (editor : any)=>{
+    editorref.current = editor;
   }
 
   return (
@@ -301,6 +311,7 @@ const Codeeditor = () => {
                 defaultLanguage="javascript"
                 value={content}
                 onChange={handlemytype}
+                onMount={handleEditorDidMount}
                 options={{
                   fontFamily: "'JetBrains Mono', monospace",
                   fontSize: 13,

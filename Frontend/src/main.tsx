@@ -10,6 +10,7 @@ createRoot(document.getElementById('root')!).render(
  <ToastContainer 
         position="bottom-right" 
         theme="dark" 
+        limit={3}
       />
  </>
 )
