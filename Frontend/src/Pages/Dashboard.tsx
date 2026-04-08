@@ -16,7 +16,7 @@ const Dashboard = () => {
     try {
       setbVisible(false)
       const response = await axios.post(
-        'https://collaborative-code-editor-production-be05.up.railway.app/api/v1/create-room',
+        'https://collaborative-code-editor-production-e29e.up.railway.app/api/v1/create-room',
         { "roomname": roomName },
         { "headers": { "authorization": token } }
       )
@@ -39,7 +39,7 @@ const Dashboard = () => {
     try {
       const token = localStorage.getItem('authorization')
       const response = await axios.get(
-        `https://collaborative-code-editor-production-be05.up.railway.app/api/v1/join-room/${roomId}`,
+        `https://collaborative-code-editor-production-e29e.up.railway.app/api/v1/join-room/${roomId}`,
         { headers: { authorization: token } }
       )
       navigate(`/Codeeditor/${roomId}`)
