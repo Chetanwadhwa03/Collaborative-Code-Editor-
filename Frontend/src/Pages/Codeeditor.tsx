@@ -68,7 +68,7 @@ const Codeeditor = () => {
 
     const username = localStorage.getItem('username') || 'Peer'
     setuname(username);
-    const ws = new WebSocket('wss://collaborative-code-editor-production-be05.up.railway.app')
+    const ws = new WebSocket('wss://collaborative-code-editor-production-e29e.up.railway.app')
     setwebsocket(ws)
 
     ws.onopen = () => {

@@ -8,10 +8,14 @@ import jwt from 'jsonwebtoken';
 import { nanoid } from 'nanoid';
 import cors from 'cors';
 import axios from 'axios';
+// For deployment. 
+import { createServer } from 'http';
 import Usermodel from './Models/User.js';
 import Roommodel from './Models/Room.js';
 import Auth from './Middleware/Auth.js';
 const app = express();
+const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
+const server = createServer(app);
 app.use(express.json());
 const corsoptions = {
     origin: "https://corewire.vercel.app"
@@ -254,11 +258,8 @@ app.post('/api/v1/save-code', async (req, res) => {
     });
 });
 // To get the content present in that particular room
-app.listen(3000, () => {
-    console.log('Server is listening on the port 3000');
-});
 // Websocket Server
-const wss = new WebSocketServer({ port: 8080 });
+const wss = new WebSocketServer({ server: server });
 // string->sockets[]
 let rooms = new Map();
 // socket->string
@@ -374,5 +375,9 @@ wss.on('connection', (socket) => {
     catch (e) {
         console.log('Error encountered in websocket server as', e);
     }
+});
+server.listen(PORT, () => {
+    console.log(`Master Server is running on ${PORT}`);
+    console.log('Both the websocket and the HTTP server are running on the same PORT');
 });
 //# sourceMappingURL=Server.js.map
