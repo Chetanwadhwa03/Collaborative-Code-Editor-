@@ -24,6 +24,8 @@ const Codeeditor = () => {
   const [unreadCount, setUnreadCount] = useState(0)
   const isChatOpenRef = useRef(isChatOpen)
 
+  const isReceivingmessageref = useRef(false)
+
   // NEW: Keep the ref synced with the state, and clear unreads when opened
   useEffect(() => {
     isChatOpenRef.current = isChatOpen
@@ -71,6 +73,7 @@ const Codeeditor = () => {
     const ws = new WebSocket('wss://collaborative-code-editor-production-e29e.up.railway.app')
     setwebsocket(ws)
 
+    // Broadcasting the join message.
     ws.onopen = () => {
       const temproom = {
         type: 'join',
@@ -94,12 +97,19 @@ const Codeeditor = () => {
       }
       else if (parseddata.type === 'code') {
         const recentlyarrivedcontent = parseddata.payload.content
+
         // If the content is different.
         if(editorref.current.getValue() !== recentlyarrivedcontent){
+          isReceivingmessageref.current = true;
           editorref.current.setValue(recentlyarrivedcontent);
+
+          setTimeout(()=>{
+            isReceivingmessageref.current=false;
+          },50);
+
         }
         else{
-          
+          return
         }
       }
       else if (parseddata.type === 'room_users') {
@@ -148,6 +158,14 @@ const Codeeditor = () => {
   // to handle the code that is being written from my side.
   // @ts-ignore
   const handlemytype = (value: string | undefined, event) => {
+
+    // It means that we have came in to this function because the server changed the code, and we will not like to broadcast it again on changing
+    // of the code, we like to send it to the server when we type manually to the editor not when the editor values changes.
+
+    if(isReceivingmessageref.current){
+      return;
+    }
+
     if (currclock.current) {
       clearTimeout(currclock.current)
     }

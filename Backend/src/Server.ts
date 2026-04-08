@@ -417,20 +417,6 @@ wss.on('connection', (socket) => {
                     socket.send('The room does not exists !!')
                 }
             }
-            else if (parseddata.type === 'cursor-position') {
-               
-                if (rooms.has(roomId)) {
-                    // @ts-ignore
-                    rooms.get(roomId).forEach(s => {
-                        if (s != socket) {
-                            s.send(JSON.stringify(parseddata))
-                        }
-                    });
-                }
-                else {
-                    socket.send('The room does not exists !!')
-                }
-            }
         })
 
         socket.on('close', () => {
