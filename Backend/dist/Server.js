@@ -18,7 +18,7 @@ const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 const server = createServer(app);
 app.use(express.json());
 const corsoptions = {
-    origin: "https://corewire.vercel.app"
+    origin: "http://localhost:5173"
 };
 app.use(cors(corsoptions));
 dotenv.config();
@@ -317,19 +317,6 @@ wss.on('connection', (socket) => {
             else if (parseddata.type === 'chat') {
                 // Attaching the username on the parseddata coming from the frontend from the map present in the backend and then broadcasting it.
                 parseddata.payload.username = socketusername.get(socket) || 'Peer';
-                if (rooms.has(roomId)) {
-                    // @ts-ignore
-                    rooms.get(roomId).forEach(s => {
-                        if (s != socket) {
-                            s.send(JSON.stringify(parseddata));
-                        }
-                    });
-                }
-                else {
-                    socket.send('The room does not exists !!');
-                }
-            }
-            else if (parseddata.type === 'cursor-position') {
                 if (rooms.has(roomId)) {
                     // @ts-ignore
                     rooms.get(roomId).forEach(s => {

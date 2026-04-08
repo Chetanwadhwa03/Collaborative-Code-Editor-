@@ -24,7 +24,7 @@ function useScrollReveal(threshold = 0.12) {
 const FEATURES = [
   {
     title: "Real-Time IDE",
-    description: "Seamless collaborative editing with real-time state syncing. See your team's changes appear live on your screen as they type.",
+    description: "Seamless collaborative editing with real-time state syncing. See your team's changes appear live on your screen as they type & execute the code remotely.",
     icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" /></svg>,
     badge: null,
   },
@@ -102,7 +102,7 @@ const Landingpage = () => {
     const formdata = new FormData(e.currentTarget)
     const content = Object.fromEntries(formdata)
     try {
-      const response = await axios.post('https://collaborative-code-editor-production-e29e.up.railway.app/api/v1/signin', content)
+      const response = await axios.post('https://collaborative-code-editor-production-be05.up.railway.app/api/v1/signin', content)
       localStorage.setItem('authorization', response.data.token)
       localStorage.setItem('username', response.data.username)
       toast.success(response.data.message)
