@@ -22,19 +22,16 @@ const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 const server = createServer(app);
 
-
-app.use(express.json());
-
 const corsoptions = {
-    origin: "https://corewire.vercel.app"
+    origin: "http://localhost:5173"
 }
 
+app.use(express.json());
 app.use(cors(corsoptions))
 dotenv.config()
 
 // @ts-ignore
 mongoose.connect(process.env.MONGODB_URI)
-
 
 
 const zodschema = z.object({
@@ -52,7 +49,6 @@ app.post('/api/v1/signup', async (req, res) => {
         const { username, email, password }: zodtype = req.body
 
         if (!username || !email || !password) {
-            console.log('Faaltu ka error')
             return res.status(400).json({
                 message: "Please provide all the credentials"
             })
@@ -330,9 +326,8 @@ app.post('/api/v1/save-code', async (req, res) => {
 })
 
 // To get the content present in that particular room
-
-
 // Websocket Server
+
 const wss = new WebSocketServer({server:server});
 
 // string->sockets[]
@@ -419,6 +414,8 @@ wss.on('connection', (socket) => {
             }
         })
 
+        // When the socket connection disconnects, then we have made sure that we remove that socket from the array of sockets corresponding to that particular roomID. and if the array itself becomes empty then we delete that roomID otherwise we make sure that array gets updated corresponding to the roomID and for the dynamic island logic also we update it because it was dependent on the array of sockets corresponding to that roomID.
+        
         socket.on('close', () => {
             if (croomID && rooms.has(croomID)) {
                 let croomsockets = rooms.get(croomID)

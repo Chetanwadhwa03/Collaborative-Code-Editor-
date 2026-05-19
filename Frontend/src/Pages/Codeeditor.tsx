@@ -44,7 +44,7 @@ const Codeeditor = () => {
     async function getcontent() {
       try {
         const token = localStorage.getItem('authorization')
-        const response = await axios.get(`https://collaborative-code-editor-production-e29e.up.railway.app/api/v1/join-room/${roomId}`,
+        const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}api/v1/join-room/${roomId}`,
           { headers: { authorization: token } })
 
         const fetchedcontent = response.data.content
@@ -57,8 +57,10 @@ const Codeeditor = () => {
         // @ts-ignore
         const errorMessage = e.response?.data?.message || "Something went wrong!";
         toast.error(errorMessage);
-        if (errorMessage === 'Session Expired') {
+        // @ts-ignore
+        if (e.response?.data?.isExpired) {
           localStorage.removeItem('authorization')
+          localStorage.removeItem('username');
           navigate('/')
         }
         else {
@@ -70,7 +72,7 @@ const Codeeditor = () => {
 
     const username = localStorage.getItem('username') || 'Peer'
     setuname(username);
-    const ws = new WebSocket('wss://collaborative-code-editor-production-e29e.up.railway.app')
+    const ws = new WebSocket(`${import.meta.env.VITE_WEBSOCKET_URL}`)
     setwebsocket(ws)
 
     // Broadcasting the join message.
@@ -142,7 +144,7 @@ const Codeeditor = () => {
   async function storeinDB(value: String) {
     try {
       // @ts-ignore
-      const response = await axios.post('https://collaborative-code-editor-production-e29e.up.railway.app/api/v1/save-code', {
+      const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}api/v1/save-code`, {
         croomId: roomId,
         content: value
       })
@@ -192,7 +194,7 @@ const Codeeditor = () => {
 
       const livecode = editorref.current ? editorref.current.getValue() : content
 
-      const response = await axios.post('https://collaborative-code-editor-production-e29e.up.railway.app/api/v1/run-code', {
+      const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}api/v1/run-code`, {
         content: livecode,
         language: "nodejs",
         versionindex: "4"

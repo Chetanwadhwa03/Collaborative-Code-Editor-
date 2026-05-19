@@ -6,12 +6,24 @@ function Auth(req, res, next) {
             message: 'Session Expired'
         });
     }
-    else {
+    try {
         // @ts-ignore
         const data = jwt.verify(token, process.env.JWT_SECRET_KEY);
         res.locals.email = data.email;
+        next();
     }
-    next();
+    catch (e) {
+        // @ts-ignore
+        if (e.name === 'TokenExpiredError') {
+            return res.status(401).json({
+                message: 'Session Expired, please login again',
+                isExpired: true
+            });
+        }
+        res.status(403).json({
+            message: 'Invalid token'
+        });
+    }
 }
 export default Auth;
 //# sourceMappingURL=Auth.js.map

@@ -16,7 +16,7 @@ const Dashboard = () => {
     try {
       setbVisible(false)
       const response = await axios.post(
-        'https://collaborative-code-editor-production-e29e.up.railway.app/api/v1/create-room',
+        `${import.meta.env.VITE_BACKEND_URL}api/v1/create-room`,
         { "roomname": roomName },
         { "headers": { "authorization": token } }
       )
@@ -39,13 +39,21 @@ const Dashboard = () => {
     try {
       const token = localStorage.getItem('authorization')
       const response = await axios.get(
-        `https://collaborative-code-editor-production-e29e.up.railway.app/api/v1/join-room/${roomId}`,
+        `${import.meta.env.VITE_BACKEND_URL}api/v1/join-room/${roomId}`,
         { headers: { authorization: token } }
       )
       navigate(`/Codeeditor/${roomId}`)
       // For now it is alert, but later on we have to use toasts here.
       toast.success(response.data.message)
     } catch (e) {
+      // @ts-ignore
+      if(e.response?.data.isExpired){
+        localStorage.removeItem('authorization');
+        localStorage.removeItem('username');
+        navigate('/');
+      }
+
+
       // @ts-ignore
       toast.error(e.response?.data?.message || "Something went wrong!");
       // for now i have hardcoded the message, otherwise we have to pick it up from the server.
