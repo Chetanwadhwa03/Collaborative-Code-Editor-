@@ -23,7 +23,7 @@ const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 const server = createServer(app);
 
 const corsoptions = {
-    origin: "http://localhost:5173"
+    origin: "https://corewire.vercel.app/"
 }
 
 app.use(express.json());
