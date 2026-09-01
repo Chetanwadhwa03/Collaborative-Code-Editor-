@@ -1,11 +1,10 @@
-# ⚡ CoreWire: The Multiplayer Code Workspace
-
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-corewire.vercel.app-00e5ff?style=for-the-badge&logo=vercel)](https://corewire.vercel.app/)
-[![Backend Status](https://img.shields.io/badge/Backend-Deployed_on_Railway-4B4B4B?style=for-the-badge&logo=railway)](https://collaborative-code-editor-production-e29e.up.railway.app)
+# CoreWire: The Multiplayer Code Workspace
 
 **CoreWire** is a high-performance, real-time collaborative code execution environment. It allows multiple developers to join isolated workspaces, write code together with zero-latency synchronization, chat in real-time, and execute code directly in the browser. 
 
-Think of it as a lightweight, browser-based fusion of VS Code Live Share and an interactive terminal.
+It is built  for low-latency technical interviews, where every keystroke is shared state.
+
+**[Live Demo](https://corewire.vercel.app/)** · 
 
 ### 🎥 See it in Action
 https://github.com/user-attachments/assets/e580c223-0029-454d-9f66-2da2353d68a9
@@ -39,9 +38,8 @@ https://github.com/user-attachments/assets/e580c223-0029-454d-9f66-2da2353d68a9
 * Node.js & Express.js
 * Native WebSockets (`ws`)
 * MongoDB Atlas & Mongoose
-* Axios (for 3rd-party compiler API calls)
 
-**Deployment & DevOps:**
+**Deployment**
 * **Frontend:** Vercel (Configured with SPA routing rules)
 * **Backend:** Railway (Configured for dynamic port binding & WebSocket secure upgrades)
 
